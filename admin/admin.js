@@ -68,6 +68,7 @@
     $('[data-badge=units]').textContent = changed ? changed + ' 변경' : '';
     var n = inquiries().filter(function (q) { return q.status === '신규'; }).length;
     $('[data-badge=inq]').textContent = n || '';
+    var tn = Object.keys(db.texts || {}).length; $('[data-badge=texts]').textContent = tn ? tn + '' : '';
   }
 
   // ── 로그인
@@ -81,7 +82,7 @@
   $('#reset').addEventListener('click', function () { if (confirm('시안 데이터(호실 변경·팝업·소식·문의)를 처음 상태로 되돌릴까요?')) { localStorage.removeItem(KEY); location.reload(); } });
 
   // ── 라우팅
-  var TITLES = { dash: '대시보드', units: '호실 관리', popup: '팝업 관리', news: '소식 · 보도자료', inq: '문의 접수', aeo: 'AI 검색 점검', site: '사업 정보' };
+  var TITLES = { dash: '대시보드', units: '호실 관리', popup: '팝업 관리', news: '소식 · 보도자료', inq: '문의 접수', aeo: 'AI 검색 점검', texts: '문구 수정', site: '사업 정보' };
   function route() {
     var r = (location.hash || '#dash').slice(1).split('/')[0]; if (!TITLES[r]) r = 'dash';
     $$('[data-nav]').forEach(function (a) { a.classList.toggle('on', a.dataset.nav === r); });
@@ -191,7 +192,7 @@
     var list = news(), sel = location.hash.split('/')[1];
     var cur = list.filter(function (n) { return n.id === sel; })[0];
     v.innerHTML = '<div class="grid2"><div class="card"><div class="row between"><div><h2>글 목록</h2><p class="d">보도자료·에드버토리얼이 나올 때마다 여기에 붓습니다. 게시한 글만 홈페이지에 보입니다.</p></div><button class="btn btn-o btn-sm" data-new>+ 새 글</button></div>' +
-      list.map(function (n) { return '<div class="news-item"><span class="pill" style="background:' + ({ '공지': '#1F2761', '입점 소식': '#F15A24', '보도자료': '#36A9E1', '데이터 인사이트': '#17A398' })[n.type] + '">' + n.type + '</span><a href="#news/' + n.id + '"><b>' + esc(n.title) + '</b><small>' + n.date + '</small></a><span class="st ' + (n.published ? 'st-on' : 'st-off') + '">' + (n.published ? '게시 중' : '보류') + '</span></div>'; }).join('') + '</div>' +
+      list.map(function (n) { return '<div class="news-item"><span class="pill" style="background:' + ({ '공지': '#1F2761', '입점 소식': '#F15A24', '보도자료': '#36A9E1', '데이터 인사이트': '#17A398' })[n.type] + '">' + n.type + '</span><a href="#news/' + n.id + '"><b>' + (n.ai ? '<span class="st st-call">AI 초안</span> ' : '') + esc(n.title) + '</b><small>' + n.date + '</small></a><span class="st ' + (n.published ? 'st-on' : 'st-off') + '">' + (n.published ? '게시 중' : '보류') + '</span></div>'; }).join('') + '</div>' +
       '<div class="card" data-ed>' + (cur ? '' : '<p class="empty">왼쪽에서 글을 고르거나 새 글을 만드세요.<br><br>💡 데이터 인사이트: 반경 3km 상가 중개업소·MD 구성 분석 결과를 글로 올리면 입지환경의 근거로 쓰입니다.</p>') + '</div></div>';
     $('[data-new]', v).addEventListener('click', function () {
       var n = { id: 'n' + Date.now().toString(36), date: new Date().toISOString().slice(0, 10), type: '공지', published: false, title: '새 글', summary: '', body: '', link: '' };
@@ -248,6 +249,31 @@
       '<div class="card"><h2>페이지별 점검</h2><table><thead><tr><th>페이지</th><th>FAQ</th><th>구조화 데이터</th><th>표·숫자 글자화</th><th>설명문</th></tr></thead><tbody>' +
       pages.map(function (p) { return '<tr><td><b>' + p[0] + '</b></td><td class="ok">' + (A.faqCount[p[2]] || 0) + '개</td><td>' + ld[p[2]] + '</td><td class="ok">✓</td><td class="ok">✓</td></tr>'; }).join('') + '</tbody></table>' +
       '<p class="d" style="margin-top:12px"><a class="btn btn-n btn-sm" href="../compliance/" target="_blank">광고 컴플라이언스 점검 보고 ↗</a></p><p class="d" style="margin-top:12px">정식 오픈 체크: ① noindex·robots 차단 해제 ② 네이버 서치어드바이저·구글 서치콘솔 등록, sitemap.xml 제출 ③ GA4·메타 픽셀 연결(폼 전환 이벤트) ④ 보도자료 게재 때마다 소식 글 + NewsArticle 자동 생성</p></div>';
+  };
+
+
+  // ── 문구 수정 (화면에서 바로 고치기 + AI 다듬기 제안)
+  var PAGES = [['메인', ''], ['사업개요', 'overview/'], ['오시는 길', 'location/'], ['입지환경', 'environment/'], ['프리미엄', 'premium/'], ['배치도', 'floorplan/'], ['분양일정', 'schedule/'], ['소식', 'news/'], ['관심고객등록', 'register/']];
+  function pageName(p) { var hit = PAGES.filter(function (x) { return '/' + x[1] === p; })[0]; return hit ? hit[0] : p; }
+  VIEWS.texts = function (v) {
+    var texts = db.texts || {}, keys = Object.keys(texts).sort(function (a, b) { return (texts[b].at || '') < (texts[a].at || '') ? -1 : 1; });
+    var grow = (A.grow && A.grow.copy) || [];
+    v.innerHTML = '<div class="card"><h2>홈페이지에서 바로 고치기</h2><p class="d">페이지를 고르면 홈페이지가 <b>문구 수정 모드</b>로 열립니다. 글자를 눌러 고치고 다른 곳을 누르면 저장됩니다. 숫자·입점 현황처럼 자동으로 바뀌는 곳은 호실 관리에서 고칩니다.</p><div class="row">' +
+      PAGES.map(function (p) { return '<button class="btn btn-line btn-sm" data-open="' + p[1] + '">' + p[0] + ' ↗</button>'; }).join('') + '</div></div>' +
+      '<div class="card"><div class="row between"><div><h2>AI 문구 다듬기 제안</h2><p class="d">' + (A.grow ? 'Claude(' + esc(A.grow.account || '') + ')가 광고 기준에 맞춰 다듬은 문구입니다. ' + esc(A.grow.at || '') + ' 생성' : 'AI 제안이 아직 없습니다. 작업기를 돌리면 여기에 쌓입니다.') + ' "적용"을 누르면 홈페이지에 바로 반영됩니다.</p></div></div>' +
+      (grow.length ? '<table><thead><tr><th>페이지</th><th>지금 문구</th><th>AI 제안</th><th>이유</th><th></th></tr></thead><tbody>' + grow.map(function (g, i) {
+        var k = g.page + '|*|' + g.orig, on = !!texts[k];
+        return '<tr><td>' + esc(pageName(g.page)) + '</td><td>' + esc(g.orig) + '</td><td><b>' + esc(g.suggest) + '</b>' + (riskScan(g.suggest).length ? '<div class="warn">위험 표현 있음</div>' : '') + '</td><td>' + esc(g.reason || '') + '</td><td>' + (on ? '<button class="btn btn-line btn-sm" data-unapply="' + i + '">되돌리기</button>' : '<button class="btn btn-o btn-sm" data-apply="' + i + '">적용</button>') + '</td></tr>';
+      }).join('') + '</tbody></table>' : '') + '</div>' +
+      '<div class="card"><h2>바꾼 문구 ' + keys.length + '개</h2><p class="d">방문자에게는 바꾼 문구가 보입니다. 광고 위험 표현이 들어간 줄은 주황색으로 표시됩니다.</p>' +
+      (keys.length ? '<div class="tbl-scroll"><table><thead><tr><th>페이지</th><th>원래 문구</th><th>바꾼 문구</th><th>점검</th><th></th></tr></thead><tbody>' + keys.map(function (k) {
+        var t = texts[k], plain = t.html.replace(/<[^>]+>/g, ''), hits = riskScan(plain);
+        return '<tr class="' + (hits.length ? 'changed' : '') + '"><td>' + esc(pageName(t.page || k.split('|')[0])) + '</td><td>' + esc(t.orig) + '</td><td><b>' + esc(plain) + '</b></td><td>' + (hits.length ? '<span class="st st-new">' + esc(hits[0].kind) + '</span>' : '<span class="st st-on">통과</span>') + '</td><td><button class="link" data-revert="' + esc(k) + '">되돌리기</button></td></tr>';
+      }).join('') + '</tbody></table></div>' : '<p class="empty">아직 바꾼 문구가 없습니다.</p>') + '</div>';
+    $$('[data-open]', v).forEach(function (b) { b.addEventListener('click', function () { localStorage.setItem('artera.edit.token', String(Date.now())); window.open('../' + b.dataset.open + '?edit=1', '_blank'); }); });
+    $$('[data-revert]', v).forEach(function (b) { b.addEventListener('click', function () { var k = b.dataset.revert; delete db.texts[k]; log('문구 되돌림 — ' + k.split('|')[0]); save('되돌렸습니다'); VIEWS.texts(v); }); });
+    $$('[data-apply]', v).forEach(function (b) { b.addEventListener('click', function () { var g = grow[+b.dataset.apply]; db.texts = db.texts || {}; db.texts[g.page + '|*|' + g.orig] = { orig: g.orig, html: esc(g.suggest), page: g.page, at: new Date().toISOString(), ai: true }; log('AI 문구 적용 — ' + g.suggest.slice(0, 30)); save('홈페이지에 적용했습니다'); VIEWS.texts(v); }); });
+    $$('[data-unapply]', v).forEach(function (b) { b.addEventListener('click', function () { var g = grow[+b.dataset.unapply]; delete db.texts[g.page + '|*|' + g.orig]; log('AI 문구 되돌림'); save('되돌렸습니다'); VIEWS.texts(v); }); });
   };
 
   // ── 사업 정보

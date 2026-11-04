@@ -4,6 +4,7 @@
   var A = window.ARTERA || {};
   var B = document.body.getAttribute('data-base') || '/';
   var KEY = 'artera.cms.v1';
+  var EDITING = /[?&]edit=1/.test(location.search);
   var cms = {};
   try { cms = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { cms = {}; }
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -110,10 +111,10 @@
       slides[cur].classList.remove('on'); dots[cur].classList.remove('on');
       cur = (i + slides.length) % slides.length;
       slides[cur].classList.add('on'); dots[cur].classList.remove('on'); void dots[cur].offsetWidth; dots[cur].classList.add('on');
-      clearTimeout(timer); timer = setTimeout(function () { go(cur + 1); }, 9500);
+      clearTimeout(timer); if (!EDITING) timer = setTimeout(function () { go(cur + 1); }, 9500);
     }
     dots.forEach(function (d, i) { d.addEventListener('click', function () { go(i); }); });
-    timer = setTimeout(function () { go(1); }, 9500);
+    if (!EDITING) timer = setTimeout(function () { go(1); }, 9500);
   }
   // 영상 파일이 있을 때만 재생 (없으면 이미지 유지)
   $$('video[data-video]').forEach(function (v) {
@@ -196,7 +197,7 @@
       '<dl class="pn-dl"><div><dt>전용면적</dt><dd>' + u.ex.toFixed(2) + '㎡ <small>' + u.exP.toFixed(2) + '평</small></dd></div><div><dt>계약면적</dt><dd>' + u.ct.toFixed(2) + '㎡ <small>' + u.ctP.toFixed(2) + '평</small></dd></div>' +
       '<div><dt>분양</dt><dd>' + (A.sale[u.s.sale] || '분양 예정') + '</dd></div><div><dt>임차</dt><dd>' + leaseOf(u).label + '</dd></div></dl>' +
       (z ? '<p class="pn-zone"><i style="background:' + z.color + '"></i><span><b>' + z.label + '</b> · ' + esc(z.where) + '<br>' + esc(z.md) + '</span></p>' : '') +
-      '<div class="pn-btns">' + (u.s.sale !== 'sold' ? '<a class="btn btn-orange" href="' + B + 'register/?kind=invest&unit=' + u.no + '#invest">이 호실 투자 문의</a>' : '') +
+      '<div class="pn-btns"><a class="btn btn-navy" href="' + B + 'units/' + u.no + '/">' + u.no + '호 자세히 보기</a>' + (u.s.sale !== 'sold' ? '<a class="btn btn-orange" href="' + B + 'register/?kind=invest&unit=' + u.no + '#invest">이 호실 투자 문의</a>' : '') +
       (u.s.lease === 'open' || u.s.lease === 'loi' ? '<a class="btn btn-line" href="' + B + 'register/?kind=lease&unit=' + u.no + '#lease">이 호실 임차 문의</a>' : '') + '</div></div>';
   }
   function selectUnit(fp, no) {
@@ -237,9 +238,11 @@
       g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectUnit(fp, no); } });
     });
     var m = location.hash.match(/^#u(\d{3})$/); if (m) setTimeout(function () { fp.scrollIntoView({ block: 'center' }); selectUnit(fp, m[1]); }, 300);
+    if (fp.dataset.select) selectUnit(fp, fp.dataset.select);
   });
 
   // 면적표 현황 칸 갱신 + 동 필터
+  $$('[data-unit-status]').forEach(function (td) { var u = byNo[td.getAttribute('data-unit-status')]; if (!u) return; td.textContent = displayLabel(u) + (u.s.brand ? ' · ' + u.s.brand + (u.s.lease === 'loi' ? ' (입점의향서 접수 — 입점 확정 아님)' : '') : ''); });
   $$('[data-row]').forEach(function (tr) {
     var u = byNo[tr.getAttribute('data-row')]; if (!u) return;
     var td = $('[data-cell-status]', tr);
@@ -275,7 +278,7 @@
   var pop = $('#popup'), pd = Object.assign({}, A.popupSeed || {}, cms.popup || {});
   var today = new Date().toISOString().slice(0, 10);
   var hidden = false; try { hidden = localStorage.getItem('artera.popup.hide') === today; } catch (e) {}
-  if (pop && pd.on && document.body.classList.contains('is-home') && !hidden && (!pd.start || pd.start <= today) && (!pd.end || pd.end >= today)) {
+  if (pop && pd.on && !EDITING && document.body.classList.contains('is-home') && !hidden && (!pd.start || pd.start <= today) && (!pd.end || pd.end >= today)) {
     $('[data-p=title]', pop).textContent = pd.title; $('[data-p=body]', pop).textContent = pd.body;
     $('[data-p=cta]', pop).textContent = pd.cta || '자세히 보기';
     $('[data-p=link]', pop).href = /^https?:/.test(pd.link) ? pd.link : B + (pd.link || '');
