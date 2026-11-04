@@ -20,6 +20,9 @@
   var UNITS = (A.units || []).map(function (u) { return Object.assign({}, u, { s: stateOf(u.no) }); });
   var byNo = {}; UNITS.forEach(function (u) { byNo[u.no] = u; });
   var LEASE = A.lease || {};
+  var LOGOS = A.brandLogos || {};
+  var logoOff = cms.logoOff || {};
+  function logoOf(brand) { var l = LOGOS[brand]; return l && !logoOff[brand] ? B + 'assets/img/brands/' + l.file : ''; }
   var ZONES = A.zones || {};
   function leaseOf(u) { return LEASE[u.s.lease] || LEASE.open; }
   function displayLabel(u) {
@@ -142,12 +145,11 @@
     });
   });
   $$('[data-stats]').forEach(function (box) {
-    var filled = C.operating + C.leased + C.loi;
     box.innerHTML = [
       ['영업 중', C.operating, LEASE.operating.color, 'LX지인 · 컴포즈커피'],
       ['임차 확정', C.leased, LEASE.leased.color, '이마트 에브리데이'],
-      ['LOI 접수', C.loi, LEASE.loi.color, '팜프라자 · 투썸 · 노브랜드 · 크린토피아'],
-      ['임차 진행률', Math.round(filled / 29 * 100), '#1F2761', '29실 중 ' + filled + '실 브랜드 확보', '%'],
+      ['LOI 접수', C.loi, LEASE.loi.color, '입점의향서 단계 · 입점 확정 아님'],
+      ['분양완료', C.sold, '#9AA1B4', '105 · 110 · 203 · 209호'],
     ].map(function (s) { return '<div class="stat" style="--c:' + s[2] + '"><b><span data-count-to="' + s[1] + '">' + s[1] + '</span><small>' + (s[4] || '실') + '</small></b><span>' + s[0] + '</span><small class="d">' + s[3] + '</small></div>'; }).join('');
     if (io) io.observe(box);
   });
@@ -163,7 +165,8 @@
     box.innerHTML = list.map(function (x) {
       var l = LEASE[x.lease];
       var range = x.units.length > 2 ? x.units[0] + '~' + x.units[x.units.length - 1] + '호' : x.units.join('·') + '호';
-      return '<div class="brand"><span class="bs" style="background:' + l.color + '">' + l.label + '</span><b class="bn">' + esc(x.brand) + '</b><span class="bu">' + range + ' · ' + esc((x.note || '').split('·')[0]) + '</span></div>';
+      var lg = logoOf(x.brand);
+      return '<div class="brand"><span class="bs" style="background:' + l.color + '">' + l.label + '</span><div class="blogo">' + (lg ? '<img src="' + lg + '" alt="' + esc(x.brand) + ' 로고" loading="lazy">' : '<b class="bn">' + esc(x.brand) + '</b>') + '</div><b class="bn2">' + esc(x.brand) + '</b><span class="bu">' + range + ' · ' + esc((x.note || '').split('·')[0]) + '</span></div>';
     }).join('');
   });
 
@@ -189,7 +192,7 @@
     var c = displayColor(u), z = u.zone ? ZONES[u.zone] : null;
     return '<div class="pn"><button class="pn-close" aria-label="닫기">✕</button>' +
       '<div class="pn-top"><span class="pn-no">' + u.no + '<small>호 · ' + u.dong + '동</small></span><span class="pn-st" style="background:' + c.color + ';color:' + c.text + (c.color === '#FFFFFF' ? ';border:1.5px solid #1F2761' : '') + '">' + displayLabel(u) + '</span></div>' +
-      (u.s.brand ? '<div class="pn-brand"><b>' + esc(u.s.brand) + '</b><span>' + esc(u.s.note) + '</span></div>' : '<div class="pn-brand"><b>' + (u.s.sale === 'sold' ? '분양완료 호실' : '입점 브랜드 모집 중') + '</b><span>' + esc(u.s.note || (z ? z.md + ' 업종 추천' : '업종 제한 없이 상담')) + '</span></div>') +
+      (u.s.brand ? '<div class="pn-brand">' + (logoOf(u.s.brand) ? '<img class="pn-logo" src="' + logoOf(u.s.brand) + '" alt="' + esc(u.s.brand) + ' 로고">' : '') + '<b>' + esc(u.s.brand) + '</b><span>' + esc(u.s.note) + '</span>' + (u.s.lease === 'loi' ? '<em class="pn-loi">LOI는 입점 확정이 아닌 협의 단계입니다</em>' : '') + '</div>' : '<div class="pn-brand"><b>' + (u.s.sale === 'sold' ? '분양완료 호실' : '입점 브랜드 모집 중') + '</b><span>' + esc(u.s.note || (z ? z.md + ' 업종 추천' : '업종 제한 없이 상담')) + '</span></div>') +
       '<dl class="pn-dl"><div><dt>전용면적</dt><dd>' + u.ex.toFixed(2) + '㎡ <small>' + u.exP.toFixed(2) + '평</small></dd></div><div><dt>계약면적</dt><dd>' + u.ct.toFixed(2) + '㎡ <small>' + u.ctP.toFixed(2) + '평</small></dd></div>' +
       '<div><dt>분양</dt><dd>' + (A.sale[u.s.sale] || '분양 예정') + '</dd></div><div><dt>임차</dt><dd>' + leaseOf(u).label + '</dd></div></dl>' +
       (z ? '<p class="pn-zone"><i style="background:' + z.color + '"></i><span><b>' + z.label + '</b> · ' + esc(z.where) + '<br>' + esc(z.md) + '</span></p>' : '') +
@@ -302,12 +305,12 @@
   $$('[data-calc]').forEach(function (f) {
     function calc() {
       var v = function (n) { return parseFloat(f.elements[n].value) || 0; };
-      var price = v('price'), dep = v('deposit'), rent = v('rent'), loanP = v('loan'), rate = v('rate');
-      var loan = price * loanP / 100, interest = loan * rate / 100, own = price - dep - loan;
+      var price = v('price'), dep = v('deposit'), rent = v('rent'), loanP = v('loan'), rate = v('rate'), tax = f.elements.tax ? v('tax') : 0;
+      var loan = price * loanP / 100, interest = loan * rate / 100, taxAmt = price * tax / 100, own = price + taxAmt - dep - loan;
       $('[data-out=loan]', f).textContent = loanP;
       var y = own > 0 ? ((rent * 12 - interest) / own * 100) : 0;
       $('[data-out=yield]', f).textContent = own > 0 ? y.toFixed(2) + '%' : '-';
-      $('[data-out=detail]', f).textContent = '실투자금 ' + Math.round(own).toLocaleString() + '만원 · 연 임대수입 ' + (rent * 12).toLocaleString() + '만원' + (loan ? ' · 연 이자 ' + Math.round(interest).toLocaleString() + '만원' : '');
+      $('[data-out=detail]', f).textContent = '실투자금 ' + Math.round(own).toLocaleString() + '만원(취득세 등 ' + Math.round(taxAmt).toLocaleString() + '만원 포함) · 연 임대수입 ' + (rent * 12).toLocaleString() + '만원' + (loan ? ' · 연 이자 ' + Math.round(interest).toLocaleString() + '만원' : '');
     }
     f.addEventListener('input', calc); calc();
   });

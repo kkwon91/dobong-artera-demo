@@ -7,6 +7,27 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var LEASE = A.lease, ZONES = A.zones, SALE = A.sale;
 
+  // 광고 위험 표현 (공정위 부동산 심사지침 기준 실무 목록)
+  var RISKY = [
+    [/최저가|최저 분양가|가장 싸|가장 저렴/, '최상급 가격 표현', '"추정 건설원가 대비 ○% (114호 예시)"처럼 근거와 기준을 붙이세요'],
+    [/최고|최대 규모|유일|독보적|압도적|1위|넘버원/, '근거 없는 최상급', '객관적 근거(출처·기준)를 함께 쓰거나 빼세요'],
+    [/두\s?번\s?다시|마지막 기회|마지막 분양|곧 마감|완판 임박|선착순 마감/, '희소성 과장', '실제 잔여 호실·기한이 있을 때만, 사실 그대로'],
+    [/보장|확정\s?수익|확정\s?수익률|무조건|100\s?%|원금 보장|평생 임대/, '수익·임대 보장', '수익률은 산출 방법과 함께 "예시·보장 아님"으로만'],
+    [/입점\s?확정|출점\s?확정/, '입점 확정 표현', '임대차계약이 맺어진 경우에만. LOI는 "입점의향서 접수"로'],
+    [/지금이 (가장|제일)|오를 수밖에|오른다|시세 차익|프리미엄 보장/, '가격 전망 단정', '미래 가격을 단정하지 마세요'],
+    [/GTX|개통 예정|착공 확정/, '교통·개발 계획', '확정 여부·출처·시점을 함께 쓰세요("계획", "예정" 단서)'],
+  ];
+  function riskScan(text) {
+    var hits = [];
+    RISKY.forEach(function (r) { var m = String(text || '').match(r[0]); if (m) hits.push({ word: m[0], kind: r[1], fix: r[2] }); });
+    return hits;
+  }
+  function riskBox(hits) {
+    if (!hits.length) return '<div class="ok-box">광고 위험 표현 없음</div>';
+    return '<div class="warn"><b>광고 위험 표현 ' + hits.length + '건</b> — 게시 전에 확인하세요<ul>' + hits.map(function (h) { return '<li>"' + esc(h.word) + '" · ' + h.kind + ' → ' + h.fix + '</li>'; }).join('') + '</ul></div>';
+  }
+  function logoUrl(brand) { var l = (A.brandLogos || {})[brand]; return l && !(db.logoOff || {})[brand] ? '../assets/img/brands/' + l.file : ''; }
+
   function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
   var db = load();
   function save(msg) {
@@ -116,7 +137,7 @@
       var u = A.units.filter(function (x) { return x.no === no; })[0], box = $('[data-editor]', v);
       if (!u) { box.innerHTML = '<p class="d">↑ 배치도에서 호실을 누르면 여기서 바로 고칠 수 있습니다.</p>'; return; }
       var s = stateOf(no), c = colorOf(s);
-      box.innerHTML = '<div class="editor"><div class="row between"><h3>' + no + '호 <small style="font-size:14px;color:#5A6178">' + u.dong + '동 · 전용 ' + u.ex + '㎡(' + u.exP + '평) · 계약 ' + u.ct + '㎡(' + u.ctP + '평)' + (u.zone ? ' · ' + ZONES[u.zone].label : '') + '</small></h3><span class="pill" style="background:' + c.color + ';color:' + (c.color === '#FFFFFF' ? '#1F2761;border:1px solid #1F2761' : '#fff') + '">' + c.label + '</span></div>' +
+      box.innerHTML = '<div class="editor"><div class="row between"><h3>' + (s.brand && logoUrl(s.brand) ? '<img class="ed-logo" src="' + logoUrl(s.brand) + '" alt="">' : '') + no + '호 <small style="font-size:14px;color:#5A6178">' + u.dong + '동 · 전용 ' + u.ex + '㎡(' + u.exP + '평) · 계약 ' + u.ct + '㎡(' + u.ctP + '평)' + (u.zone ? ' · ' + ZONES[u.zone].label : '') + '</small></h3><span class="pill" style="background:' + c.color + ';color:' + (c.color === '#FFFFFF' ? '#1F2761;border:1px solid #1F2761' : '#fff') + '">' + c.label + '</span></div>' +
         '<div class="fgrid"><label class="f">분양 상태<select data-e="sale">' + Object.keys(SALE).map(function (k) { return '<option value="' + k + '"' + (s.sale === k ? ' selected' : '') + '>' + SALE[k] + '</option>'; }).join('') + '</select></label>' +
         '<label class="f">임차 상태<select data-e="lease">' + Object.keys(LEASE).map(function (k) { return '<option value="' + k + '"' + (s.lease === k ? ' selected' : '') + '>' + LEASE[k].label + '</option>'; }).join('') + '</select></label>' +
         '<label class="f">입점(예정) 브랜드<input data-e="brand" value="' + esc(s.brand) + '" placeholder="예) 팜프라자"></label>' +
@@ -181,9 +202,11 @@
     ed.innerHTML = '<h2>글 쓰기</h2><div class="fgrid" style="margin-top:12px"><label class="f">유형<select data-n="type">' + ['공지', '입점 소식', '보도자료', '데이터 인사이트'].map(function (t) { return '<option' + (cur.type === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label><label class="f">날짜<input type="date" data-n="date" value="' + cur.date + '"></label>' +
       '<label class="f full">제목<input data-n="title" value="' + esc(cur.title) + '"></label><label class="f full">요약 (목록·검색 설명에 쓰임)<textarea data-n="summary" rows="2">' + esc(cur.summary) + '</textarea></label>' +
       '<label class="f full">본문<textarea data-n="body" rows="7">' + esc(cur.body) + '</textarea></label><label class="f full">원문 링크 (보도자료)<input data-n="link" value="' + esc(cur.link) + '" placeholder="https://"></label></div>' +
-      '<div class="row" style="margin-top:14px"><button class="btn btn-o" data-pub>' + (cur.published ? '저장' : '게시하기') + '</button><button class="btn btn-line" data-hold>' + (cur.published ? '게시 내리기' : '보류로 저장') + '</button><button class="link" data-del>삭제</button></div>';
+      '<div data-risk></div><div class="row" style="margin-top:14px"><button class="btn btn-o" data-pub>' + (cur.published ? '저장' : '게시하기') + '</button><button class="btn btn-line" data-hold>' + (cur.published ? '게시 내리기' : '보류로 저장') + '</button><button class="link" data-del>삭제</button></div>';
     function collect(pub) { $$('[data-n]', ed).forEach(function (el) { cur[el.dataset.n] = el.value; }); cur.published = pub; db.news = list; }
-    $('[data-pub]', ed).addEventListener('click', function () { collect(true); log('소식 게시 — ' + cur.title); save('게시했습니다'); VIEWS.news(v); });
+    function scan() { $('[data-risk]', ed).innerHTML = riskBox(riskScan(['title', 'summary', 'body'].map(function (k) { return $('[data-n=' + k + ']', ed).value; }).join(' '))); }
+    $$('[data-n]', ed).forEach(function (el) { el.addEventListener('input', scan); }); scan();
+    $('[data-pub]', ed).addEventListener('click', function () { var hits = riskScan(['title', 'summary', 'body'].map(function (k) { return $('[data-n=' + k + ']', ed).value; }).join(' ')); if (hits.length && !confirm('광고 위험 표현이 ' + hits.length + '건 있습니다. 그래도 게시할까요?')) return; collect(true); log('소식 게시 — ' + cur.title); save('게시했습니다'); VIEWS.news(v); });
     $('[data-hold]', ed).addEventListener('click', function () { collect(false); log('소식 보류 — ' + cur.title); save('보류로 저장했습니다'); VIEWS.news(v); });
     $('[data-del]', ed).addEventListener('click', function () { if (!confirm('이 글을 삭제할까요?')) return; db.news = list.filter(function (n) { return n !== cur; }); log('소식 삭제 — ' + cur.title); save('삭제했습니다'); location.hash = 'news'; });
   };
@@ -224,7 +247,7 @@
       A.aeoQueries.map(function (q) { return '<tr><td><b>' + esc(q[0]) + '</b></td><td>' + esc(q[1] === 'index' ? '메인' : q[1]) + '</td><td>' + esc(q[2]) + '</td><td><a class="btn btn-line btn-sm" target="_blank" href="../' + (q[1] === 'index' ? '' : q[1]) + '">열기 ↗</a></td></tr>'; }).join('') + '</tbody></table></div>' +
       '<div class="card"><h2>페이지별 점검</h2><table><thead><tr><th>페이지</th><th>FAQ</th><th>구조화 데이터</th><th>표·숫자 글자화</th><th>설명문</th></tr></thead><tbody>' +
       pages.map(function (p) { return '<tr><td><b>' + p[0] + '</b></td><td class="ok">' + (A.faqCount[p[2]] || 0) + '개</td><td>' + ld[p[2]] + '</td><td class="ok">✓</td><td class="ok">✓</td></tr>'; }).join('') + '</tbody></table>' +
-      '<p class="d" style="margin-top:12px">정식 오픈 체크: ① noindex·robots 차단 해제 ② 네이버 서치어드바이저·구글 서치콘솔 등록, sitemap.xml 제출 ③ GA4·메타 픽셀 연결(폼 전환 이벤트) ④ 보도자료 게재 때마다 소식 글 + NewsArticle 자동 생성</p></div>';
+      '<p class="d" style="margin-top:12px"><a class="btn btn-n btn-sm" href="../compliance/" target="_blank">광고 컴플라이언스 점검 보고 ↗</a></p><p class="d" style="margin-top:12px">정식 오픈 체크: ① noindex·robots 차단 해제 ② 네이버 서치어드바이저·구글 서치콘솔 등록, sitemap.xml 제출 ③ GA4·메타 픽셀 연결(폼 전환 이벤트) ④ 보도자료 게재 때마다 소식 글 + NewsArticle 자동 생성</p></div>';
   };
 
   // ── 사업 정보
@@ -232,7 +255,10 @@
     var owners = (db.site && db.site.owners) || A.site.owners;
     v.innerHTML = '<div class="card"><h2>바닥글 사업 주체</h2><p class="d">분양대행사 정식 명칭 등이 정해지면 여기서 고칩니다. 모든 페이지 바닥글에 반영됩니다.</p><div class="fgrid">' +
       owners.map(function (o, i) { return '<label class="f">' + esc(o[0]) + '<input data-i="' + i + '" value="' + esc(o[1]) + '"></label>'; }).join('') + '</div><div class="row" style="margin-top:14px"><button class="btn btn-o" data-save>저장</button></div></div>' +
+      '<div class="card"><h2>브랜드 로고 표시</h2><p class="d">로고 사용 허락이 확인되지 않았거나 철회되면 끄세요. 끄면 홈페이지에 글자로 보입니다. 상표권은 각 사에 있습니다.</p><table><thead><tr><th>브랜드</th><th>로고</th><th>출처</th><th>사용 허락</th><th>표시</th></tr></thead><tbody>' +
+      Object.keys(A.brandLogos || {}).map(function (b) { var l = A.brandLogos[b], on = !(db.logoOff || {})[b]; return '<tr><td><b>' + esc(b) + '</b></td><td class="logo-cell"><img src="../assets/img/brands/' + l.file + '" alt=""></td><td>' + esc(l.src) + '</td><td>' + (l.permit ? '<span class="st st-on">허락 받음</span>' : '<span class="st st-new">확인 필요</span>') + '</td><td><button class="switch' + (on ? ' on' : '') + '" data-logo="' + esc(b) + '" aria-label="' + esc(b) + ' 로고 표시"></button></td></tr>'; }).join('') + '</tbody></table></div>' +
       '<div class="card"><h2>고정 정보</h2><table><tbody><tr><td>대표번호</td><td><b>' + A.site.phone + '</b></td></tr><tr><td>홍보관</td><td>' + esc(A.site.gallery) + ' · ' + A.site.galleryHours + '</td></tr><tr><td>전화 상담</td><td>' + A.site.callHours + '</td></tr><tr><td>주소</td><td>' + esc(A.site.address) + '</td></tr></tbody></table><p class="d" style="margin-top:10px">대표번호·운영시간은 바뀔 일이 드물어 코드로 관리합니다(요청 시 바로 수정).</p></div>';
+    $$('[data-logo]', v).forEach(function (b) { b.addEventListener('click', function () { var k = b.dataset.logo; db.logoOff = db.logoOff || {}; if (db.logoOff[k]) delete db.logoOff[k]; else db.logoOff[k] = true; b.classList.toggle('on', !db.logoOff[k]); log(k + ' 로고 ' + (db.logoOff[k] ? '끄기' : '켜기')); save(k + ' 로고 ' + (db.logoOff[k] ? '숨김' : '표시')); }); });
     $('[data-save]', v).addEventListener('click', function () {
       var o = owners.map(function (x, i) { return [x[0], $('[data-i="' + i + '"]', v).value]; });
       db.site = { owners: o }; log('사업 정보 수정'); save('사업 정보 저장됨');
