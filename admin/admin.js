@@ -26,6 +26,58 @@
     if (!hits.length) return '<div class="ok-box">광고 위험 표현 없음</div>';
     return '<div class="warn"><b>광고 위험 표현 ' + hits.length + '건</b> — 게시 전에 확인하세요<ul>' + hits.map(function (h) { return '<li>"' + esc(h.word) + '" · ' + h.kind + ' → ' + h.fix + '</li>'; }).join('') + '</ul></div>';
   }
+  // ── 글 에디터 (소제목·굵게·강조·목록·링크·사진) — 저장은 허용 태그만
+  function textToHtml(t) { return String(t || '').split(/\n{2,}/).filter(function (p) { return p.trim(); }).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join(''); }
+  function safeHtml(html) {
+    var body = new DOMParser().parseFromString('<div>' + (html || '') + '</div>', 'text/html').body.firstChild;
+    var OK = { P: 1, H3: 1, B: 1, STRONG: 1, EM: 1, UL: 1, OL: 1, LI: 1, A: 1, BR: 1, IMG: 1, SMALL: 1, BLOCKQUOTE: 1 };
+    Array.prototype.slice.call(body.querySelectorAll('*')).reverse().forEach(function (el) {
+      if (!OK[el.tagName]) { if (el.tagName === 'DIV') { var p = document.createElement('p'); p.innerHTML = el.innerHTML; el.replaceWith(p); } else el.replaceWith.apply(el, Array.prototype.slice.call(el.childNodes)); return; }
+      Array.prototype.slice.call(el.attributes).forEach(function (a) {
+        var keep = (el.tagName === 'A' && a.name === 'href' && /^https?:\/\//i.test(a.value)) || (el.tagName === 'IMG' && ((a.name === 'src' && /^(https?:|data:image\/(png|jpe?g|webp);)/i.test(a.value)) || a.name === 'alt'));
+        if (!keep) el.removeAttribute(a.name);
+      });
+      if (el.tagName === 'A') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener nofollow'); }
+    });
+    return body.innerHTML.replace(/&nbsp;/g, ' ').replace(/<p>\s*<\/p>/g, '').trim();
+  }
+  function rteHtml(html) {
+    return '<div class="rte"><div class="rte-bar">' +
+      [['h3', '소제목'], ['p', '본문'], ['b', '<b>굵게</b>'], ['em', '<span style="color:#F15A24;font-weight:800">강조</span>'], ['ul', '• 목록'], ['ol', '1. 목록'], ['quote', '“ 인용'], ['link', '링크'], ['img', '사진'], ['clear', '서식 지우기']]
+        .map(function (b) { return '<button type="button" data-r="' + b[0] + '">' + b[1] + '</button>'; }).join('') +
+      '<span class="rte-len" data-rlen></span></div><div class="rte-area" contenteditable="true" data-rte>' + safeHtml(html) + '</div><input type="file" accept="image/*" data-rimg hidden></div>';
+  }
+  function bindRte(box, onChange) {
+    var area = $('[data-rte]', box), fileIn = $('[data-rimg]', box), saved = null;
+    document.execCommand('defaultParagraphSeparator', false, 'p');
+    function keep() { var s = getSelection(); if (s.rangeCount && area.contains(s.anchorNode)) saved = s.getRangeAt(0).cloneRange(); }
+    function restore() { area.focus(); if (saved) { var s = getSelection(); s.removeAllRanges(); s.addRange(saved); } }
+    function len() { $('[data-rlen]', box).textContent = area.innerText.replace(/\s/g, '').length + '자'; }
+    area.addEventListener('keyup', keep); area.addEventListener('mouseup', keep);
+    area.addEventListener('input', function () { len(); onChange(); });
+    area.addEventListener('paste', function (e) { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text')); });
+    $('.rte-bar', box).addEventListener('mousedown', function (e) { if (e.target.closest('button')) e.preventDefault(); });
+    $('.rte-bar', box).addEventListener('click', function (e) {
+      var b = e.target.closest('[data-r]'); if (!b) return; var r = b.dataset.r; restore();
+      if (r === 'h3' || r === 'p') document.execCommand('formatBlock', false, r);
+      else if (r === 'quote') document.execCommand('formatBlock', false, 'blockquote');
+      else if (r === 'b') document.execCommand('bold');
+      else if (r === 'em') { var s = getSelection(); if (s.isCollapsed) return toast('강조할 글자를 먼저 고르세요'); var em = document.createElement('em'); var rg = s.getRangeAt(0); em.appendChild(rg.extractContents()); rg.insertNode(em); }
+      else if (r === 'ul') document.execCommand('insertUnorderedList');
+      else if (r === 'ol') document.execCommand('insertOrderedList');
+      else if (r === 'link') { var u = prompt('연결할 주소 (https://로 시작)', 'https://'); if (u && /^https?:\/\/\S+$/i.test(u)) document.execCommand('createLink', false, u); else if (u) toast('https:// 로 시작하는 주소만 넣을 수 있습니다'); }
+      else if (r === 'img') { keep(); fileIn.value = ''; fileIn.click(); return; }
+      else if (r === 'clear') document.execCommand('removeFormat');
+      keep(); len(); onChange();
+    });
+    fileIn.addEventListener('change', function () {
+      var f = fileIn.files[0]; if (!f) return; var rd = new FileReader();
+      rd.onload = function () { var im = new Image(); im.onload = function () { var w = Math.min(1200, im.width), h = Math.round(im.height * w / im.width); var cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(im, 0, 0, w, h); restore(); document.execCommand('insertHTML', false, '<img src="' + cv.toDataURL('image/jpeg', 0.8) + '" alt="' + esc(f.name.replace(/\.\w+$/, '')) + '">'); keep(); len(); onChange(); }; im.src = rd.result; };
+      rd.readAsDataURL(f);
+    });
+    len();
+    return area;
+  }
   function logoUrl(brand) { var l = (A.brandLogos || {})[brand]; return l && !(db.logoOff || {})[brand] ? '../assets/img/brands/' + l.file : ''; }
 
   function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
@@ -202,12 +254,22 @@
     var ed = $('[data-ed]', v);
     ed.innerHTML = '<h2>글 쓰기</h2><div class="fgrid" style="margin-top:12px"><label class="f">유형<select data-n="type">' + ['공지', '입점 소식', '보도자료', '데이터 인사이트'].map(function (t) { return '<option' + (cur.type === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label><label class="f">날짜<input type="date" data-n="date" value="' + cur.date + '"></label>' +
       '<label class="f full">제목<input data-n="title" value="' + esc(cur.title) + '"></label><label class="f full">요약 (목록·검색 설명에 쓰임)<textarea data-n="summary" rows="2">' + esc(cur.summary) + '</textarea></label>' +
-      '<label class="f full">본문<textarea data-n="body" rows="7">' + esc(cur.body) + '</textarea></label><label class="f full">원문 링크 (보도자료)<input data-n="link" value="' + esc(cur.link) + '" placeholder="https://"></label></div>' +
-      '<div data-risk></div><div class="row" style="margin-top:14px"><button class="btn btn-o" data-pub>' + (cur.published ? '저장' : '게시하기') + '</button><button class="btn btn-line" data-hold>' + (cur.published ? '게시 내리기' : '보류로 저장') + '</button><button class="link" data-del>삭제</button></div>';
-    function collect(pub) { $$('[data-n]', ed).forEach(function (el) { cur[el.dataset.n] = el.value; }); cur.published = pub; db.news = list; }
-    function scan() { $('[data-risk]', ed).innerHTML = riskBox(riskScan(['title', 'summary', 'body'].map(function (k) { return $('[data-n=' + k + ']', ed).value; }).join(' '))); }
-    $$('[data-n]', ed).forEach(function (el) { el.addEventListener('input', scan); }); scan();
-    $('[data-pub]', ed).addEventListener('click', function () { var hits = riskScan(['title', 'summary', 'body'].map(function (k) { return $('[data-n=' + k + ']', ed).value; }).join(' ')); if (hits.length && !confirm('광고 위험 표현이 ' + hits.length + '건 있습니다. 그래도 게시할까요?')) return; collect(true); log('소식 게시 — ' + cur.title); save('게시했습니다'); VIEWS.news(v); });
+      '<div class="f full">본문' + rteHtml(cur.bodyHtml || textToHtml(cur.body)) + '</div><label class="f full">원문 링크 (보도자료)<input data-n="link" value="' + esc(cur.link) + '" placeholder="https://"></label></div>' +
+      '<div data-risk></div><div class="row" style="margin-top:14px"><button class="btn btn-o" data-pub>' + (cur.published ? '저장' : '게시하기') + '</button><button class="btn btn-line" data-hold>' + (cur.published ? '게시 내리기' : '보류로 저장') + '</button><button class="link" data-del>삭제</button></div>' +
+      '<div class="pv"><p class="pv-h">홈페이지 미리보기</p><article class="pv-art"><span class="pv-tag" data-pv="type"></span><h3 data-pv="title"></h3><time data-pv="date"></time><p class="pv-lead" data-pv="summary"></p><div class="pv-body" data-pv="body"></div></article></div>';
+    $('.grid2', v).style.gridTemplateColumns = '1fr 1.7fr';
+    var area = bindRte(ed, function () { scan(); preview(); });
+    function bodyText() { return area.innerText.replace(/\n{3,}/g, '\n\n').trim(); }
+    function collect(pub) { $$('[data-n]', ed).forEach(function (el) { cur[el.dataset.n] = el.value; }); cur.bodyHtml = safeHtml(area.innerHTML); cur.body = bodyText(); cur.published = pub; db.news = list; }
+    function allText() { return ['title', 'summary'].map(function (k) { return $('[data-n=' + k + ']', ed).value; }).join(' ') + ' ' + area.innerText; }
+    function scan() { $('[data-risk]', ed).innerHTML = riskBox(riskScan(allText())); }
+    function preview() {
+      ['type', 'title', 'summary'].forEach(function (k) { $('[data-pv=' + k + ']', ed).textContent = $('[data-n=' + k + ']', ed).value; });
+      $('[data-pv=date]', ed).textContent = ($('[data-n=date]', ed).value || '').replace(/-/g, '.');
+      $('[data-pv=body]', ed).innerHTML = safeHtml(area.innerHTML);
+    }
+    $$('[data-n]', ed).forEach(function (el) { el.addEventListener('input', function () { scan(); preview(); }); }); scan(); preview();
+    $('[data-pub]', ed).addEventListener('click', function () { var hits = riskScan(allText()); if (hits.length && !confirm('광고 위험 표현이 ' + hits.length + '건 있습니다. 그래도 게시할까요?')) return; collect(true); log('소식 게시 — ' + cur.title); save('게시했습니다'); VIEWS.news(v); });
     $('[data-hold]', ed).addEventListener('click', function () { collect(false); log('소식 보류 — ' + cur.title); save('보류로 저장했습니다'); VIEWS.news(v); });
     $('[data-del]', ed).addEventListener('click', function () { if (!confirm('이 글을 삭제할까요?')) return; db.news = list.filter(function (n) { return n !== cur; }); log('소식 삭제 — ' + cur.title); save('삭제했습니다'); location.hash = 'news'; });
   };

@@ -267,6 +267,44 @@
     var list = $('[data-news-list]');
     if (list) list.innerHTML = news.map(function (n) { return '<a class="news-row reveal in" id="' + esc(n.id) + '" href="' + newsHref(n) + '" data-type="' + esc(n.type) + '"><span class="tag">' + esc(n.type) + '</span><h3>' + esc(n.title) + '</h3><p>' + esc(n.summary) + '</p><time>' + n.date.replace(/-/g, '.') + '</time></a>'; }).join('');
   }
+
+  // ── 관리자 에디터로 쓴 글 반영 (허용 태그만)
+  function safeHtml(html) {
+    var body = new DOMParser().parseFromString('<div>' + (html || '') + '</div>', 'text/html').body.firstChild;
+    var OK = { P: 1, H3: 1, B: 1, STRONG: 1, EM: 1, UL: 1, OL: 1, LI: 1, A: 1, BR: 1, IMG: 1, SMALL: 1, BLOCKQUOTE: 1 };
+    Array.prototype.slice.call(body.querySelectorAll('*')).reverse().forEach(function (el) {
+      if (!OK[el.tagName]) { el.replaceWith.apply(el, Array.prototype.slice.call(el.childNodes)); return; }
+      Array.prototype.slice.call(el.attributes).forEach(function (a) {
+        var keep = (el.tagName === 'A' && a.name === 'href' && /^https?:\/\//i.test(a.value)) || (el.tagName === 'IMG' && ((a.name === 'src' && /^(https?:|data:image\/(png|jpe?g|webp);)/i.test(a.value)) || a.name === 'alt'));
+        if (!keep) el.removeAttribute(a.name);
+      });
+      if (el.tagName === 'A') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener nofollow'); }
+    });
+    return body.innerHTML;
+  }
+  function bodyOf(n) { return n.bodyHtml ? safeHtml(n.bodyHtml) : String(n.body || '').split(/\n{2,}/).map(function (p) { return '<p>' + esc(p) + '</p>'; }).join(''); }
+  var art = $('[data-news-id]');
+  if (art && cms.news) {
+    var mine = cms.news.filter(function (n) { return n.id === art.getAttribute('data-news-id'); })[0];
+    if (mine) {
+      var h = $('.phead .h1'); if (h) h.textContent = mine.title;
+      $('[data-n-summary]', art).textContent = mine.summary;
+      $('[data-n-date]', art).textContent = (mine.date || '').replace(/-/g, '.');
+      $('[data-n-body]', art).innerHTML = bodyOf(mine);
+      if (!mine.published) $('[data-n-body]', art).insertAdjacentHTML('beforebegin', '<p class="callout-s">게시 내린 글입니다.</p>');
+    }
+  }
+  var view = $('[data-news-view]');
+  function showView() {
+    if (!view) return;
+    var id = decodeURIComponent((location.hash || '').slice(1)), n = news.filter(function (x) { return x.id === id; })[0];
+    if (!n || seedIds.indexOf(n.id) >= 0) { view.hidden = true; return; }
+    view.hidden = false;
+    view.innerHTML = '<article class="article news-art"><span class="tag">' + esc(n.type) + '</span><h2 class="h3" style="font-size:26px;margin-top:10px">' + esc(n.title) + '</h2><time>' + (n.date || '').replace(/-/g, '.') + '</time><p class="article-lead">' + esc(n.summary) + '</p>' + bodyOf(n) + '<p><a class="more" href="#">목록으로 ↑</a></p></article>';
+    view.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  addEventListener('hashchange', showView); showView();
+
   $$('[data-news-filter]').forEach(function (bar) {
     $$('button', bar).forEach(function (b) { b.addEventListener('click', function () {
       $$('button', bar).forEach(function (x) { x.classList.toggle('on', x === b); });

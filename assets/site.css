@@ -678,6 +678,14 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
 
 html,body{overflow-x:clip}
 
+/* 에디터로 쓴 글 · 강조 */
+main p em,main li em,main td em,main dd em,.article em{font-style:normal;color:var(--orange);font-weight:700}
+.article h3{font-size:21px;margin:26px 0 8px;color:var(--navy)}
+.article ul,.article ol{padding-left:22px;margin-bottom:18px}
+.article blockquote{border-left:3px solid var(--orange);background:#FFF6F1;padding:10px 16px;margin:0 0 18px}
+.article img{max-width:100%;border-radius:3px;margin:8px 0 18px}
+.article a{color:var(--navy-2);text-decoration:underline}
+.news-view{margin-bottom:30px;border:1px solid var(--line);border-radius:4px;padding:28px 30px;background:#fff;box-shadow:var(--sh)}
 /* 호실 페이지 */
 .unit-top{display:grid;grid-template-columns:1fr 1.2fr;gap:36px;align-items:start}
 .unit-intro{font-size:17px;line-height:1.8;margin-bottom:18px}

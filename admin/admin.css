@@ -106,3 +106,26 @@ td input:focus,td select:focus,.f input:focus,.f select:focus,.f textarea:focus{
 .ok-box{margin-top:10px;border:1px solid #BFE3CD;background:#EEF9F2;color:#1D7A4C;border-radius:3px;padding:8px 12px;font-size:13px;font-weight:700}
 .logo-cell img{max-height:26px;max-width:110px;object-fit:contain;vertical-align:middle}
 .ed-logo{max-height:34px;max-width:140px;object-fit:contain;margin-right:10px;vertical-align:middle}
+/* 글 에디터 */
+.rte{border:1.5px solid var(--line);border-radius:3px;background:#fff}
+.rte-bar{display:flex;flex-wrap:wrap;gap:2px;align-items:center;padding:6px;border-bottom:1px solid var(--line);background:#FAFBFD;position:sticky;top:64px;z-index:2}
+.rte-bar button{height:30px;padding:0 10px;border-radius:2px;font-size:13px;font-weight:600;color:var(--ink)}
+.rte-bar button:hover{background:#E9EDF5}
+.rte-len{margin-left:auto;color:var(--sub);font-size:12px;padding-right:6px}
+.rte-area{min-height:220px;padding:14px 16px;font-size:15px;line-height:1.75;color:var(--ink);font-weight:500;outline:none}
+.rte-area:focus{box-shadow:inset 0 0 0 2px rgba(43,54,135,.15)}
+.rte-area h3,.pv-body h3{font-size:18px;margin:14px 0 6px;color:var(--navy)}
+.rte-area p,.pv-body p{margin:0 0 10px}
+.rte-area em,.pv-body em{font-style:normal;color:var(--o);font-weight:700}
+.rte-area ul,.rte-area ol,.pv-body ul,.pv-body ol{padding-left:22px;margin:0 0 10px}
+.rte-area blockquote,.pv-body blockquote{border-left:3px solid var(--o);padding:6px 12px;background:#FFF6F1;margin:0 0 10px;color:#3b4157}
+.rte-area img,.pv-body img{max-width:100%;border-radius:2px;margin:6px 0}
+.rte-area a,.pv-body a{color:var(--navy-2);text-decoration:underline}
+.pv{margin-top:18px;border-top:2px dashed var(--line);padding-top:14px}
+.pv-h{font-size:12px;font-weight:800;color:var(--sub);letter-spacing:.08em;margin-bottom:8px}
+.pv-art{border:1px solid var(--line);border-radius:3px;padding:20px 22px;background:#fff}
+.pv-tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:2px;background:#EAF6FC;color:var(--navy-2)}
+.pv-art h3{font-size:22px;margin:8px 0 4px;letter-spacing:-.02em}
+.pv-art time{color:var(--sub);font-size:13px;font-weight:700}
+.pv-lead{font-size:16px;font-weight:700;margin:10px 0 14px}
+.pv-body{font-size:15px;line-height:1.8}
