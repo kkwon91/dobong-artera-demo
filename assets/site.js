@@ -204,7 +204,7 @@
     var u = byNo[no]; if (!u) return;
     $$('.u', fp).forEach(function (g) { g.classList.toggle('on', g.getAttribute('data-no') === no); });
     var p = $('[data-panel]', fp); p.innerHTML = panelHtml(u);
-    var cl = $('.pn-close', p); if (cl) cl.addEventListener('click', function () { $$('.u', fp).forEach(function (g) { g.classList.remove('on'); }); p.innerHTML = '<div class="fp-empty"><p class="eyebrow">29 UNITS</p><h3>호실을 고르면<br>정보가 여기에 나타납니다</h3><div class="fp-count" data-count></div></div>'; paint(fp); });
+    var cl = $('.pn-close', p); if (cl) cl.addEventListener('click', function () { $$('.u', fp).forEach(function (g) { g.classList.remove('on'); }); p.innerHTML = '<div class="fp-empty"><p class="eyebrow">29개 호실</p><h3>호실을 고르면<br>정보가 여기에 나타납니다</h3><div class="fp-count" data-count></div></div>'; paint(fp); });
     var h = $('.fp-hint', fp); if (h) h.classList.add('hide');
     if (innerWidth < 1180) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }

@@ -709,3 +709,135 @@ main p em,main li em,main td em,main dd em,.article em{font-style:normal;color:v
 .consent th,.consent td{border-top:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top;font-weight:500}
 .consent th{width:76px;color:var(--navy);font-weight:700;white-space:nowrap}
 .quick .consent{color:var(--sub)}
+
+/* ═══════════ 인쇄 광고식 정리 (11-04 "글 상자 AI 같다") ═══════════
+   뜬 카드(흰 바탕+흐린 그림자+왼쪽 색 띠) → 가는 선·여백·굵은 윗줄
+   유리 상자 → 사진 위 글자, 그라데이션·빛 번짐 버튼 → 단색 */
+:root{--sh:0 0 0 1px var(--line);--sh-lg:0 0 0 1px var(--line);--float:0 6px 18px rgba(20,26,69,.14)}
+.nav-sub,.fp-tip{box-shadow:var(--float)}
+.dock-btn{box-shadow:0 4px 12px rgba(20,26,69,.18)}
+.calc-box,.rform,.news-view{box-shadow:none}
+.ov-img,.demand-map,.front-slider,.front-map,.reg-side img,.way-map iframe,.dist-card{box-shadow:none}
+.scroll-progress{background:var(--orange)}
+.sec-navy{background:var(--navy-dk)}
+
+/* 소제목: 영어 자간 띄운 꼬리표 → 한국어 짧은 표지 */
+.eyebrow{font-size:15px;letter-spacing:0;font-weight:800;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:18px;height:2px;background:currentColor;flex:none}
+
+/* 버튼: 단색, 뜨는 효과 없음 */
+.btn,.btn:hover{transform:none}
+.btn-orange{background:var(--orange);box-shadow:none}
+.btn-orange:hover{background:#D94C17;box-shadow:none}
+.btn-navy{box-shadow:none}.btn-navy:hover{background:var(--navy-dk)}
+.btn-ghost{backdrop-filter:none;-webkit-backdrop-filter:none}
+.dock-reg{background:var(--orange)}
+.fm-o{background:var(--orange)}
+.g-lease{background:var(--sky)}.g-sale{background:var(--orange)}
+.callout{background:var(--navy)}
+.pn-brand{background:var(--gray)}
+
+/* 첫 화면: 유리 상자 없애고 사진 위에 바로 */
+.hero-card{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;border:0;border-radius:0;box-shadow:none;padding:0}
+@media(min-width:901px){
+.hero-slide[data-slide="0"] .hero-media::after{background:linear-gradient(270deg,rgba(255,255,255,.94) 0,rgba(255,255,255,.86) 30%,rgba(255,255,255,.5) 50%,rgba(255,255,255,0) 64%),linear-gradient(0deg,rgba(14,19,52,.28),rgba(14,19,52,0) 22%)}
+.hero-slide[data-slide="0"] .hero-h,.hero-slide[data-slide="0"] .hero-sub,.hero-slide[data-slide="0"] .hero-kicker{text-shadow:none}
+.hero-slide[data-slide="0"] .hero-kicker{color:var(--navy);opacity:1;font-size:14px;letter-spacing:0;border-bottom:2px solid var(--navy);padding-bottom:8px}
+.hero-slide[data-slide="0"] .btn-ghost{background:#fff;color:var(--navy);border:1.5px solid var(--navy)}
+.hero-slide[data-slide="1"] .hero-media::after{background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,.25) 32%,rgba(255,255,255,0) 52%)}
+.hero-slide[data-slide="1"] .hero-h,.hero-slide[data-slide="1"] .hero-sub,.hero-slide[data-slide="1"] .hero-kicker{text-shadow:0 1px 10px rgba(255,255,255,.7)}
+}
+
+/* 혜택 띠: 흰 상자 3개 → 남색 띠 안 세로선 3칸 */
+.benefit{padding:30px 0}
+.benefit-in{gap:0}
+.bf{background:none;border-radius:0;border-left:1px solid rgba(255,255,255,.2);padding:4px 30px;color:#fff;align-items:flex-start;flex-wrap:wrap;gap:6px 14px}
+.bf:first-child{border-left:0;padding-left:0}
+.bf:hover{transform:none;box-shadow:none}
+.bf-n{color:var(--orange-2);border-right:0;padding-right:0;width:100%;font-size:12.5px;font-weight:800}
+.bf p{font-size:17px;line-height:1.45}
+.bf em{color:var(--orange-2)}
+.bf p small{color:rgba(255,255,255,.55)}
+.bf i{color:rgba(255,255,255,.6);margin-top:2px}
+.bf:hover p{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+
+/* 입점 현황: 뜬 카드 4개 → 한 장의 표 */
+.board-cells{box-shadow:none;border:1px solid var(--line);border-radius:2px}
+.board-stats{gap:0;border:1px solid var(--line);border-radius:2px;background:#fff;align-content:stretch}
+.stat{box-shadow:none;border-radius:0;padding:24px 24px 22px;border-bottom:1px solid var(--line)}
+.stat:nth-child(odd){border-right:1px solid var(--line)}
+.stat:nth-child(n+3){border-bottom:0}
+.stat::before{display:none}
+.stat>span{display:flex;align-items:center;gap:8px}
+.stat>span::before{content:"";width:10px;height:10px;background:var(--c);flex:none}
+.brand{border-radius:2px}
+.brand:hover{transform:none;box-shadow:none;border-color:var(--navy)}
+.cell:hover{box-shadow:0 0 0 2px var(--ink)}
+
+/* 프리미엄: 카드 → 사진+글(바탕 없음) */
+.p5{row-gap:44px;column-gap:22px}
+.p5-card{background:none;box-shadow:none;border-top:0;border-radius:0}
+.p5-card:hover{transform:none;box-shadow:none}
+.p5-img{border-radius:2px}
+.p5-body{padding:20px 0 0}
+.p5-body h3{margin-top:0}
+.p5-card:hover h3{text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:1px}
+
+/* 배치도·입지·분양가 */
+.fp{box-shadow:none;border:1px solid var(--line);border-radius:2px}
+.seg button.on{box-shadow:none}
+.fp-panel{background:#fff}
+.dist-card{border-radius:2px}
+.dist-card:hover{transform:none}
+.demand-strip{border-radius:2px}
+.demand-strip::after{display:none}
+.bars{background:none;box-shadow:none;border-radius:0;border-bottom:1px solid var(--ink);padding:20px 0 0}
+.bar{border-radius:0}
+.bar-o{background:var(--orange)}.bar-s{background:var(--sky)}.bar-g{background:#A9AEBB}
+.bars-note{right:0;top:0}
+
+/* 소식: 테두리 상자 → 굵은 윗줄 목록 */
+.news-grid{gap:30px}
+.news-card{border:0;border-top:2px solid var(--ink);border-radius:0;padding:20px 0 0;min-height:0;background:none}
+.news-card:hover{transform:none;box-shadow:none;border-color:var(--ink)}
+.news-card:hover h3,.news-row:hover h3{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.news-card .tag,.news-row .tag{background:none;padding:0;color:var(--orange);font-size:13px;font-weight:800}
+.news-list{gap:0;border-top:2px solid var(--ink)}
+.news-row{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:22px 0}
+.news-row:hover{box-shadow:none;transform:none}
+
+/* 상담 폼: 그림자·알약 탭 → 밑줄 탭 */
+.qform,.rform{border-radius:2px}
+.qform{box-shadow:none}
+.qtabs,.rtabs{background:none;padding:0;gap:0;border-bottom:1px solid var(--line);border-radius:0}
+.qtabs button,.rtabs button{border-radius:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:12px 6px}
+.qtabs button.on,.rtabs button.on{background:none;box-shadow:none;border-bottom-color:var(--navy)}
+
+/* 자주 묻는 질문: 상자 + Q/A 배지 → 줄 목록 */
+.faq-list{gap:0;border-top:2px solid var(--ink)}
+.faq-item{border:0;border-bottom:1px solid var(--line);border-radius:0}
+.faq-item[open]{box-shadow:none;border-color:var(--line)}
+.faq-item summary{padding:22px 4px}
+.q,.a{width:auto;height:auto;background:none;border-radius:0;font-size:18px;min-width:22px;justify-content:flex-start}
+.q{color:var(--orange)}.a{color:#9aa0b2}
+.ans{padding:0 4px 24px}
+
+/* 서브 페이지 카드 윗줄 굵기 줄이기 */
+.fm{border-top-width:3px}.zone{border-top-width:3px}
+.step:hover{transform:none;box-shadow:none;border-color:var(--navy)}
+
+@media(max-width:900px){
+  .bf{border-left:0;border-top:1px solid rgba(255,255,255,.2);padding:16px 0}
+  .bf:first-child{border-top:0;padding-top:0}
+  .stat{padding:16px}
+}
+/* 브랜드 칸: 상자 7개 → 가는 선 격자 */
+.brand-row{gap:0;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.brand{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;background:#fff}
+.brand:hover{border-color:var(--line);background:var(--gray)}
+/* 2번 장면: 상자가 빠져 제목이 인물 얼굴과 겹침 → 하늘이 빈 오른쪽으로 */
+@media(min-width:901px){
+  .hero-copy-c{align-items:flex-end;text-align:right}
+  .hero-copy-c .hero-cta{justify-content:flex-end}
+  .hero-slide[data-slide="1"] .hero-media::after{background:linear-gradient(270deg,rgba(255,255,255,.55) 0,rgba(255,255,255,.25) 40%,rgba(255,255,255,0) 60%),linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 45%)}
+}
