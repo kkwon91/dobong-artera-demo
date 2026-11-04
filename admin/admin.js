@@ -352,6 +352,8 @@
       db.site = { owners: o }; log('사업 정보 수정'); save('사업 정보 저장됨');
     });
   };
+  // 덧붙인 화면(방문 분석 등) 등록 — funnel.js 가 먼저 읽혀 ARTERA_ADMIN_EXT 에 넣어 둠
+  (window.ARTERA_ADMIN_EXT || []).forEach(function (f) { try { f({ A: A, VIEWS: VIEWS, TITLES: TITLES, esc: esc, $: $, $$: $$, stateOf: stateOf, colorOf: colorOf }); } catch (e) { console.error(e); } });
   // 이미 로그인한 탭이면 바로 들어감 (VIEWS 정의 뒤에 실행)
   if (sessionStorage.getItem(SESS) === '1') enter();
 })();
