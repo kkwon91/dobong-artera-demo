@@ -35,12 +35,14 @@
     return leaseOf(u);
   }
   function counts() {
-    var c = { operating: 0, leased: 0, loi: 0, open: 0, sold: 0, soldOpen: 0 };
+    var c = { operating: 0, leased: 0, loi: 0, open: 0, sold: 0, soldOpen: 0 }, deal = { operating: {}, leased: {}, loi: {} };
     UNITS.forEach(function (u) {
       if (u.s.sale === 'sold') c.sold++;
       if (u.s.sale === 'sold' && u.s.lease === 'open') c.soldOpen++;
-      else c[u.s.lease]++;
+      else { c[u.s.lease]++; if (deal[u.s.lease]) deal[u.s.lease][String(u.s.brand || '').trim() || '#' + u.no] = 1; }
     });
+    // LOI 는 호실 수가 아니라 건수(브랜드별 1건) — 팜프라자 8개 호실 = 1건
+    c.loiDeals = Object.keys(deal.loi).length;
     return c;
   }
   var C = counts();
@@ -67,8 +69,8 @@
   var live = $('[data-live-summary]');
   if (live) {
     live.innerHTML = [
-      ['operating', '영업 중', C.operating], ['leased', '임차 확정', C.leased], ['loi', 'LOI 접수', C.loi], ['open', '모집 중', C.open + C.soldOpen]
-    ].map(function (x) { var l = LEASE[x[0]]; return '<span class="chip"><i style="background:' + (x[0] === 'open' ? '#fff' : l.color) + '"></i>' + x[1] + ' <b>' + x[2] + '</b></span>'; }).join(' · ') +
+      ['operating', '영업 중', C.operating, '실'], ['leased', '임차 확정', C.leased, '실'], ['loi', 'LOI 접수', C.loiDeals, '건'], ['open', '모집 중', C.open + C.soldOpen, '실']
+    ].map(function (x) { var l = LEASE[x[0]]; return '<span class="chip"><i style="background:' + (x[0] === 'open' ? '#fff' : l.color) + '"></i>' + x[1] + ' <b><span data-count-to="' + x[2] + '">0</span>' + x[3] + '</b></span>'; }).join(' · ') +
       ' <a href="' + B + 'floorplan/">배치도에서 보기</a>';
   }
 
@@ -79,16 +81,31 @@
   }
 
   // ── 등장 · 숫자 올라가기
-  function countUp(el) {
-    if (el.dataset.done) return; el.dataset.done = 1;
+  var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function countUp(el, again) {
+    if (el.dataset.done && !again) return; el.dataset.done = 1;
     var to = parseFloat(el.getAttribute('data-count-to')), dec = parseInt(el.getAttribute('data-dec') || '0', 10);
-    var t0 = performance.now(), dur = 1400;
+    var show = function (v) { el.textContent = dec ? v.toFixed(dec) : Math.round(v).toLocaleString('ko-KR'); };
+    if (REDUCE) { show(to); return; }
+    var t0 = performance.now() + parseInt(el.getAttribute('data-delay') || '0', 10), dur = parseInt(el.getAttribute('data-dur') || '1400', 10), tok = (el._tok || 0) + 1;
+    el._tok = tok;
     function f(t) {
-      var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3), v = to * e;
-      el.textContent = dec ? v.toFixed(dec) : Math.round(v).toLocaleString('ko-KR');
+      if (el._tok !== tok) return;
+      var p = Math.max(0, Math.min(1, (t - t0) / dur)), e = 1 - Math.pow(1 - p, 3);
+      show(to * e);
       if (p < 1) requestAnimationFrame(f);
     }
     requestAnimationFrame(f);
+  }
+  // 마우스를 올리면 숫자가 다시 0부터 (거리 상자·입점 숫자·LIVE 띠) — 같은 칸은 1.5초에 한 번
+  function replayOnHover(sel) {
+    $$(sel).forEach(function (box) {
+      var last = 0;
+      box.addEventListener('mouseenter', function () {
+        var n = Date.now(); if (n - last < 1500) return; last = n;
+        $$('[data-count-to]', box).forEach(function (el) { countUp(el, true); });
+      });
+    });
   }
   var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
     es.forEach(function (e) {
@@ -102,6 +119,7 @@
   function watch(els) { els.forEach(function (el) { if (io) io.observe(el); else el.classList.add('in'); }); }
   watch($$('.reveal, .gantt, [data-bars], .fp, .drone-copy, .hero-copy, .phead-in, .dong-cards'));
   $$('.hero-slide.on [data-count-to]').forEach(countUp);
+  $$('[data-live-summary] [data-count-to]').forEach(function (el) { countUp(el); });
 
   // ── 히어로 슬라이드 + 영상
   var hero = $('[data-hero]');
@@ -149,11 +167,12 @@
     box.innerHTML = [
       ['영업 중', C.operating, LEASE.operating.color, 'LX지인 · 컴포즈커피'],
       ['임차 확정', C.leased, LEASE.leased.color, '이마트 에브리데이'],
-      ['LOI 접수', C.loi, LEASE.loi.color, '입점의향서 단계 · 입점 확정 아님'],
+      ['LOI 접수', C.loiDeals, LEASE.loi.color, C.loi + '개 호실 · 입점의향서 단계 · 입점 확정 아님', '건'],
       ['분양완료', C.sold, '#9AA1B4', '105 · 110 · 203 · 209호'],
     ].map(function (s) { return '<div class="stat" style="--c:' + s[2] + '"><b><span data-count-to="' + s[1] + '">' + s[1] + '</span><small>' + (s[4] || '실') + '</small></b><span>' + s[0] + '</span><small class="d">' + s[3] + '</small></div>'; }).join('');
     if (io) io.observe(box);
   });
+  replayOnHover('[data-stats] .stat, .mini-dist > div, .dist-card, .live-bar');
   $$('[data-brands]').forEach(function (box) {
     var seen = {}, list = [];
     UNITS.forEach(function (u) {
@@ -186,8 +205,11 @@
       ? Object.keys(ZONES).map(function (k) { return '<span><i style="background:' + ZONES[k].color + '"></i>' + ZONES[k].label.replace(' zone', '') + '</span>'; }).join('')
       : [['operating'], ['leased'], ['loi']].map(function (k) { var l = LEASE[k[0]]; return '<span><i style="background:' + l.color + '"></i>' + l.label + '</span>'; }).join('') + '<span><i style="background:#9AA1B4"></i>분양완료</span><span><i style="background:#fff"></i>모집 중</span>';
     var ct = $('[data-count]', fp);
-    if (ct) ct.innerHTML = [['영업 중', C.operating, LEASE.operating.color], ['임차 확정', C.leased, LEASE.leased.color], ['LOI 접수', C.loi, LEASE.loi.color], ['분양완료(공실)', C.soldOpen, '#9AA1B4'], ['임차인 모집 중', C.open, '#fff']]
-      .map(function (r) { return '<div><span><i style="background:' + r[2] + '"></i>' + r[0] + '</span><b>' + r[1] + '실</b></div>'; }).join('');
+    if (ct) {
+      ct.innerHTML = [['영업 중', C.operating, LEASE.operating.color], ['임차 확정', C.leased, LEASE.leased.color], ['LOI 접수', C.loiDeals, LEASE.loi.color, '건', C.loi + '개 호실'], ['분양완료(공실)', C.soldOpen, '#9AA1B4'], ['임차인 모집 중', C.open, '#fff']]
+        .map(function (r) { return '<div' + (r[4] ? ' title="' + r[4] + '"' : '') + '><span><i style="background:' + r[2] + '"></i>' + r[0] + (r[4] ? ' <small>' + r[4] + '</small>' : '') + '</span><b><span data-count-to="' + r[1] + '">0</span>' + (r[3] || '실') + '</b></div>'; }).join('');
+      if (fp.classList.contains('in')) $$('[data-count-to]', ct).forEach(function (el) { countUp(el, true); });
+    }
   }
   function panelHtml(u) {
     var c = displayColor(u), z = u.zone ? ZONES[u.zone] : null;
@@ -200,11 +222,13 @@
       '<div class="pn-btns"><a class="btn btn-navy" href="' + B + 'units/' + u.no + '/">' + u.no + '호 자세히 보기</a>' + (u.s.sale !== 'sold' ? '<a class="btn btn-orange" href="' + B + 'register/?kind=invest&unit=' + u.no + '#invest">이 호실 투자 문의</a>' : '') +
       (u.s.lease === 'open' || u.s.lease === 'loi' ? '<a class="btn btn-line" href="' + B + 'register/?kind=lease&unit=' + u.no + '#lease">이 호실 임차 문의</a>' : '') + '</div></div>';
   }
-  function selectUnit(fp, no) {
+  var FP_EMPTY = '<div class="fp-empty"><p class="eyebrow">29개 호실</p><h3>배치도에서 호실을<br>눌러 보세요</h3><p class="fp-how">면적 · 입점 브랜드 · 분양·임차 상태 · 문의 버튼이 여기에 나타납니다</p><div class="fp-try"><span>예시로 보기</span><button type="button" data-try="114">114호</button><button type="button" data-try="111">111호</button><button type="button" data-try="204">204호</button></div><div class="fp-count" data-count></div></div>';
+  function selectUnit(fp, no, quiet) {
     var u = byNo[no]; if (!u) return;
     $$('.u', fp).forEach(function (g) { g.classList.toggle('on', g.getAttribute('data-no') === no); });
     var p = $('[data-panel]', fp); p.innerHTML = panelHtml(u);
-    var cl = $('.pn-close', p); if (cl) cl.addEventListener('click', function () { $$('.u', fp).forEach(function (g) { g.classList.remove('on'); }); p.innerHTML = '<div class="fp-empty"><p class="eyebrow">29개 호실</p><h3>호실을 고르면<br>정보가 여기에 나타납니다</h3><div class="fp-count" data-count></div></div>'; paint(fp); });
+    var cl = $('.pn-close', p); if (cl) cl.addEventListener('click', function () { $$('.u', fp).forEach(function (g) { g.classList.remove('on'); }); p.innerHTML = FP_EMPTY; paint(fp); });
+    if (quiet) return;
     var h = $('.fp-hint', fp); if (h) h.classList.add('hide');
     if (innerWidth < 1180) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -216,9 +240,12 @@
       '<span class="t-m">전용 ' + u.exP.toFixed(2) + '평 · 계약 ' + u.ctP.toFixed(2) + '평</span>' +
       (u.zone ? '<span class="t-m">' + ZONES[u.zone].label + '</span>' : '');
     tip.hidden = false;
-    var x = e.clientX, y = e.clientY, w = 230;
-    tip.style.left = (x + w + 30 > innerWidth ? x - w - 30 : x) + 'px';
-    tip.style.top = y + 'px';
+    // 화면 밖으로 안 나가게: 좌우는 화면 안에, 아래가 모자라면(휴대폰 하단 버튼 줄) 호실 위로
+    var x = e.clientX, y = e.clientY, w = Math.max(tip.offsetWidth, 200), th = tip.offsetHeight;
+    var left = x + w + 30 > innerWidth ? x - w - 30 : x;
+    left = Math.max(-8, Math.min(left, innerWidth - w - 24));
+    tip.style.left = left + 'px';
+    tip.style.top = (y + th + 40 > innerHeight - 70 ? y - th - 40 : y) + 'px';
   }
   function hideTip() { if (tip) tip.hidden = true; }
   $$('[data-fp]').forEach(function (fp) {
@@ -239,6 +266,56 @@
     });
     var m = location.hash.match(/^#u(\d{3})$/); if (m) setTimeout(function () { fp.scrollIntoView({ block: 'center' }); selectUnit(fp, m[1]); }, 300);
     if (fp.dataset.select) selectUnit(fp, fp.dataset.select);
+
+    // ── 처음 보는 사람에게 '누르면 정보가 나온다'를 직접 보여 주기 — 한 번만, 손대면 바로 멈춤
+    // (자동 안내는 진짜 마우스·누름이 아니라 방문 기록(track.js)에 관심 호실로 잡히지 않음)
+    var stage = $('[data-stage]', fp), touched = false, timers = [], tap = null;
+    function later(fn, ms) { timers.push(setTimeout(function () { if (!touched) fn(); }, ms)); }
+    function stopDemo() {
+      if (touched) return; touched = true;
+      timers.forEach(clearTimeout); timers = [];
+      if (tap) tap.classList.remove('show');
+      if (fp.classList.contains('demo')) { fp.classList.remove('demo'); hideTip(); }
+    }
+    ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { fp.addEventListener(ev, stopDemo, { passive: true }); });
+    $$('.u', fp).forEach(function (g) { g.addEventListener('mouseenter', stopDemo); });
+    addEventListener('scroll', function () { if (fp.classList.contains('demo')) hideTip(); }, { passive: true });
+    fp.addEventListener('click', function (e) { var t = e.target.closest('[data-try]'); if (t) { stopDemo(); selectUnit(fp, t.getAttribute('data-try')); } });
+    var hintEl = $('.fp-hint', fp);
+    if (hintEl && stage) stage.addEventListener('scroll', function () { hintEl.style.translate = stage.scrollLeft + 'px 0'; }, { passive: true }); // 옆으로 밀어도 안내 띠는 가운데
+    function center(g) { var r = g.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+    function moveTap(g) {
+      var c = center(g), sr = stage.getBoundingClientRect();
+      tap.style.translate = (c.x - sr.left + stage.scrollLeft) + 'px ' + (c.y - sr.top + stage.scrollTop) + 'px';
+    }
+    function step(no, at) {
+      var g = $('.u[data-no="' + no + '"]', fp); if (!g) return;
+      later(function () { // 옆으로 넘치는 휴대폰 화면이면 그 호실이 보이게 밀기
+        var c = center(g), sr = stage.getBoundingClientRect();
+        if (c.x < sr.left + 50 || c.x > sr.right - 50) stage.scrollBy({ left: c.x - (sr.left + sr.width / 2), behavior: 'smooth' });
+      }, at);
+      later(function () { moveTap(g); tap.classList.add('show'); }, at + 380);
+      later(function () {
+        moveTap(g); tap.classList.remove('press'); void tap.offsetWidth; tap.classList.add('press');
+        var c = center(g); showTip({ clientX: c.x, clientY: c.y }, byNo[no]); selectUnit(fp, no, true);
+      }, at + 1100);
+    }
+    function runDemo() {
+      if (touched || REDUCE || fp.dataset.select || m) return;
+      if (!tap) {
+        tap = document.createElement('div'); tap.className = 'fp-tap'; tap.setAttribute('aria-hidden', 'true');
+        tap.style.translate = (stage.scrollLeft + stage.clientWidth / 2) + 'px ' + stage.clientHeight / 2 + 'px';
+        stage.appendChild(tap);
+      }
+      fp.classList.add('demo');
+      var seq = ['114', '111', '204'].filter(function (n) { return byNo[n]; });
+      seq.forEach(function (no, i) { step(no, 300 + i * 3000); });
+      later(function () { hideTip(); tap.classList.remove('show'); fp.classList.remove('demo'); }, 300 + seq.length * 3000);
+    }
+    if (stage && 'IntersectionObserver' in window) {
+      var dio = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { dio.disconnect(); runDemo(); } }, { threshold: 0.6 });
+      dio.observe(stage);
+    }
   });
 
   // 면적표 현황 칸 갱신 + 동 필터
@@ -343,7 +420,37 @@
   }
 
   // ── 수익률 계산기
+  var CALC = (function () {
+    var seed = A.calcSeed || {}, mine = (cms.calc && cms.calc.units) || {}, out = {};
+    Object.keys(seed).concat(Object.keys(mine)).forEach(function (no) { out[no] = Object.assign({}, seed[no] || {}, mine[no] || {}); });
+    return out;
+  })();
+  var won = function (n) { return Math.round(n).toLocaleString('ko-KR') + '만원'; };
   $$('[data-calc]').forEach(function (f) {
+    var EX = { price: 40000, deposit: 3000, rent: 200 }, base = {};
+    function setBase(no) {
+      var u = byNo[no], b = no ? (CALC[no] || {}) : {};
+      ['price', 'deposit', 'rent'].forEach(function (k) {
+        var has = b[k] > 0, tag = $('[data-base=' + k + ']', f);
+        base[k] = has ? b[k] : (no && k === 'price' ? null : EX[k]);
+        if (base[k] != null) f.elements[k].value = base[k];
+        if (tag) tag.innerHTML = !no ? '' : has ? '기준값 ' + won(b[k]) + ' <button type="button" class="calc-reset" data-reset="' + k + '" hidden>기준값으로</button>' : (k === 'price' ? '상담 시 안내 · 직접 넣어 보세요' : '예시값 · 실제 조건 아님');
+      });
+      var info = $('[data-calc-info]', f);
+      if (info) info.textContent = !u ? '호실을 고르면 기준값이 채워집니다' : u.no + '호 · ' + u.dong + '동 · 계약 ' + u.ctP.toFixed(2) + '평' + (b.price > 0 ? ' · 계약 3.3㎡당 ' + won(b.price / u.ctP) : ' · 이 호실 분양가는 홍보관 상담(' + ((A.site && A.site.phone) || '1551-4458') + ')에서 안내합니다');
+    }
+    function marks() {
+      ['price', 'deposit', 'rent'].forEach(function (k) {
+        var r = $('[data-reset=' + k + ']', f); if (r) r.hidden = !(base[k] != null && parseFloat(f.elements[k].value) !== base[k]);
+      });
+    }
+    if (f.elements.unit) {
+      f.elements.unit.addEventListener('change', function () { setBase(f.elements.unit.value); calc(); marks(); });
+      f.addEventListener('click', function (e) { var r = e.target.closest('[data-reset]'); if (!r) return; f.elements[r.dataset.reset].value = base[r.dataset.reset]; calc(); marks(); });
+      var pre = new URLSearchParams(location.search).get('unit');
+      if (pre && byNo[pre]) { f.elements.unit.value = pre; setBase(pre); }
+    }
+    f.addEventListener('input', marks);
     function calc() {
       var v = function (n) { return parseFloat(f.elements[n].value) || 0; };
       var price = v('price'), dep = v('deposit'), rent = v('rent'), loanP = v('loan'), rate = v('rate'), tax = f.elements.tax ? v('tax') : 0;
@@ -354,6 +461,31 @@
       $('[data-out=detail]', f).textContent = '실투자금 ' + Math.round(own).toLocaleString() + '만원(취득세 등 ' + Math.round(taxAmt).toLocaleString() + '만원 포함) · 연 임대수입 ' + (rent * 12).toLocaleString() + '만원' + (loan ? ' · 연 이자 ' + Math.round(interest).toLocaleString() + '만원' : '');
     }
     f.addEventListener('input', calc); calc();
+  });
+
+  // ── 면적표: 머리줄(구분행) 고정, 호실 줄만 움직이기
+  function stickyRows() { $$('[data-sticky]').forEach(function (w) { var r = $('thead tr', w); if (r) w.style.setProperty('--h1', r.getBoundingClientRect().height + 'px'); }); }
+  stickyRows(); addEventListener('resize', stickyRows);
+
+  // ── 가격 막대: 절반 이상 보이면 차례로 자라고 숫자도 0부터, 마우스를 올리면 다시
+  $$('[data-bars]').forEach(function (box) {
+    var bars = $$('.bar', box), last = 0;
+    bars.forEach(function (b, i) {
+      b.style.transitionDelay = (i * 220) + 'ms';
+      var v = $('b', b); if (!v) return;
+      v.innerHTML = '<span data-count-to="' + v.textContent.replace(/[^\d.]/g, '') + '" data-delay="' + (i * 220) + '" data-dur="1100">0</span>';
+    });
+    function play() {
+      last = Date.now();
+      box.classList.add('reset'); box.classList.remove('go'); void box.offsetWidth;
+      box.classList.remove('reset'); void box.offsetWidth; box.classList.add('go');
+      $$('[data-count-to]', box).forEach(function (el) { countUp(el, true); });
+    }
+    if ('IntersectionObserver' in window && !REDUCE) {
+      var bo = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { play(); bo.disconnect(); } }, { threshold: 0.5 });
+      bo.observe(box);
+    } else play();
+    box.addEventListener('mouseenter', function () { if (Date.now() - last > 2500) play(); });
   });
 
   // ── 문의 폼 (시안: 브라우저에 저장 → 관리자 '문의 접수'에서 확인)

@@ -109,7 +109,9 @@
   function colorOf(s) { if (s.sale === 'sold' && s.lease === 'open') return { color: '#9AA1B4', text: '#fff', label: '분양완료' }; var l = LEASE[s.lease]; return { color: l.color, text: l.text, label: l.label }; }
   function counts() {
     var c = { operating: 0, leased: 0, loi: 0, open: 0, soldOpen: 0, sold: 0 };
-    A.units.forEach(function (u) { var s = stateOf(u.no); if (s.sale === 'sold') c.sold++; if (s.sale === 'sold' && s.lease === 'open') c.soldOpen++; else c[s.lease]++; });
+    var loi = {};
+    A.units.forEach(function (u) { var s = stateOf(u.no); if (s.sale === 'sold') c.sold++; if (s.sale === 'sold' && s.lease === 'open') c.soldOpen++; else { c[s.lease]++; if (s.lease === 'loi') loi[String(s.brand || '').trim() || '#' + u.no] = 1; } });
+    c.loiDeals = Object.keys(loi).length; // LOI 는 건수(브랜드별 1건)
     return c;
   }
   function news() { return db.news || JSON.parse(JSON.stringify(A.newsSeed)); }
@@ -160,7 +162,7 @@
     var c = counts(), q = inquiries(), filled = c.operating + c.leased + c.loi;
     var lg = (db.log || []).slice(0, 8);
     v.innerHTML =
-      '<div class="kpis">' + [['영업 중', c.operating, LEASE.operating.color], ['임차 확정', c.leased, LEASE.leased.color], ['LOI 접수', c.loi, LEASE.loi.color], ['분양완료', c.sold, '#9AA1B4'], ['임차인 모집 중', c.open + c.soldOpen, '#C9D0E4']].map(function (k) { return '<div class="kpi" style="--c:' + k[2] + '"><b>' + k[1] + '<small style="font-size:15px">실</small></b><span>' + k[0] + '</span></div>'; }).join('') + '</div>' +
+      '<div class="kpis">' + [['영업 중', c.operating, LEASE.operating.color], ['임차 확정', c.leased, LEASE.leased.color], ['LOI 접수', c.loiDeals, LEASE.loi.color, '건', c.loi + '개 호실'], ['분양완료', c.sold, '#9AA1B4'], ['임차인 모집 중', c.open + c.soldOpen, '#C9D0E4']].map(function (k) { return '<div class="kpi" style="--c:' + k[2] + '"><b>' + k[1] + '<small style="font-size:15px">' + (k[3] || '실') + '</small></b><span>' + k[0] + (k[4] ? ' <small class="muted">' + k[4] + '</small>' : '') + '</span></div>'; }).join('') + '</div>' +
       '<div class="grid2"><div class="card"><div class="row between"><div><h2>호실 현황 한눈에</h2><p class="d">임차 진행률 ' + Math.round(filled / 29 * 100) + '% (29실 중 ' + filled + '실 브랜드 확보). 호실을 누르면 바로 고칠 수 있습니다.</p></div><a class="btn btn-n btn-sm" href="#units">호실 관리 →</a></div>' +
       '<div class="bar-h" style="margin-bottom:14px"><i style="width:' + (c.operating / 29 * 100) + '%;background:' + LEASE.operating.color + '"></i><i style="width:' + (c.leased / 29 * 100) + '%;background:' + LEASE.leased.color + '"></i><i style="width:' + (c.loi / 29 * 100) + '%;background:' + LEASE.loi.color + '"></i><i style="width:' + (c.soldOpen / 29 * 100) + '%;background:#9AA1B4"></i></div>' + miniMap() + '</div>' +
       '<div style="display:grid;gap:18px;align-content:start"><div class="card"><div class="row between"><h2>새 문의</h2><a class="btn btn-line btn-sm" href="#inq">전체 →</a></div><p class="d">신규 ' + q.filter(function (x) { return x.status === '신규'; }).length + '건 · 전체 ' + q.length + '건</p>' +
@@ -353,7 +355,7 @@
     });
   };
   // 덧붙인 화면(방문 분석 등) 등록 — funnel.js 가 먼저 읽혀 ARTERA_ADMIN_EXT 에 넣어 둠
-  (window.ARTERA_ADMIN_EXT || []).forEach(function (f) { try { f({ A: A, VIEWS: VIEWS, TITLES: TITLES, esc: esc, $: $, $$: $$, stateOf: stateOf, colorOf: colorOf }); } catch (e) { console.error(e); } });
+  (window.ARTERA_ADMIN_EXT || []).forEach(function (f) { try { f({ A: A, VIEWS: VIEWS, TITLES: TITLES, esc: esc, $: $, $$: $$, stateOf: stateOf, colorOf: colorOf, db: db, save: save, log: log }); } catch (e) { console.error(e); } });
   // 이미 로그인한 탭이면 바로 들어감 (VIEWS 정의 뒤에 실행)
   if (sessionStorage.getItem(SESS) === '1') enter();
 })();

@@ -841,3 +841,66 @@ main p em,main li em,main td em,main dd em,.article em{font-style:normal;color:v
   .hero-copy-c .hero-cta{justify-content:flex-end}
   .hero-slide[data-slide="1"] .hero-media::after{background:linear-gradient(270deg,rgba(255,255,255,.55) 0,rgba(255,255,255,.25) 40%,rgba(255,255,255,0) 60%),linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 45%)}
 }
+
+/* ═══════════ 11-05 리얼메이커 수정제안 ═══════════ */
+/* 광역 조감도 */
+.aerial-wide{margin:0;border:1px solid var(--line);background:#fff}
+.aerial-wide img{display:block;width:100%;height:auto}
+.aerial-wide figcaption{padding:12px 16px;font-size:13px;color:var(--sub);border-top:1px solid var(--line)}
+/* 가격 막대: 차례로 자라기 (높이로 자라서 숫자 글자가 늘어나지 않음) */
+.bars .bar,.in .bar,.bars.in .bar{transform:none;height:0;min-height:0;transition:height 1.1s var(--ease)}
+.bars.go .bar{height:calc(var(--h) * .78)}
+.bars .bar b{opacity:0;transition:opacity .25s}
+.bars.go .bar b{opacity:1}
+.bars .bars-note{opacity:0;transition:opacity .5s 1.4s}
+.bars.go .bars-note{opacity:1}
+.bars.reset .bar,.bars.reset .bar b,.bars.reset .bars-note{transition:none!important}
+/* 거리 상자: 마우스를 올리면 숫자가 0부터 */
+.mini-dist div{cursor:default}
+.mini-dist div:hover b{color:var(--orange-2)}
+/* 면적표: 구분행 고정, 호실 줄만 움직이기 */
+.tbl-sticky{max-height:min(620px,72vh);overflow:auto;border:1px solid var(--line);border-radius:2px;overscroll-behavior:contain}
+.tbl-sticky .tbl{border-collapse:separate;border-spacing:0}
+.tbl-sticky thead th{position:sticky;top:0;z-index:3}
+.tbl-sticky thead tr+tr th{top:var(--h1,45px)}
+.tbl-sticky tbody th{position:sticky;left:0;z-index:1;background:#fff}
+.tbl-sticky thead tr:first-child th:first-child{left:0;z-index:4}
+.tbl-sticky tfoot th,.tbl-sticky tfoot td{position:sticky;bottom:0;z-index:2}
+.tbl-sticky tfoot th{left:0;z-index:3}
+/* 수익률 계산기: 호실 선택·기준값 */
+.calc-info{font-size:12.5px;font-weight:600;color:var(--navy);min-height:1.2em}
+.calc-base{font-style:normal;font-weight:600;font-size:12px;color:var(--orange);margin-left:6px}
+.calc-reset{border:0;background:none;padding:0 0 0 6px;font:inherit;color:var(--navy);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.calc-box .fld select{font-size:15px}
+/* 배치도 아래 숫자: LOI 호실 수 */
+.fp-count small{font-weight:600;color:var(--sub);font-size:11.5px;margin-left:2px}
+/* 비트플렉스 로고: 공식 투명 로고 */
+.bp-logo{background:#fff;padding:18px 22px;max-width:260px;height:auto}
+
+/* ═══════════ 11-05 배치도 '누르면 정보가 나온다' 안내 ═══════════ */
+.fp-hint{left:50%;top:14px;bottom:auto;transform:translateX(-50%);background:var(--orange);font-size:14px;padding:9px 16px;gap:10px;z-index:4;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.fp-hint .pulse{background:#fff}
+.fp-hint b{font-weight:800}
+.fp-hint .hint-sub{font-weight:500;opacity:.9;padding-left:10px;border-left:1px solid rgba(255,255,255,.45)}
+.fp-hint .hint-mo{display:none}
+@media(hover:none){.fp-hint .hint-pc{display:none}.fp-hint .hint-mo{display:inline}}
+/* 자동 안내 누름 표시 */
+.fp-tap{position:absolute;left:0;top:0;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid #fff;background:rgba(241,90,36,.45);box-shadow:0 3px 12px rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:translate .7s var(--ease),opacity .3s;z-index:5}
+.fp-tap.show{opacity:1}
+.fp-tap::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:3px solid #fff;opacity:0}
+.fp-tap.press{animation:fpPress .45s ease-out}
+.fp-tap.press::after{animation:fpRing .8s ease-out}
+@keyframes fpPress{0%{scale:1}40%{scale:.7}100%{scale:1}}
+@keyframes fpRing{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(2.3)}}
+/* 빈 패널: 무엇이 나오는지 + 예시로 보기 */
+.fp-empty .fp-how{grid-column:1;margin:0;font-size:14px;color:var(--sub);line-height:1.5}
+.fp-try{grid-column:1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:13px;font-weight:700;color:var(--sub)}
+.fp-try button{border:1.5px solid var(--navy);background:#fff;color:var(--navy);font-weight:800;font-size:13px;padding:6px 12px;border-radius:2px;cursor:pointer}
+.fp-try button:hover{background:var(--navy);color:#fff}
+@media(min-width:1181px){.fp-count{grid-row:1/5}}
+@media(max-width:900px){
+  .fp-hint{top:10px;font-size:12.5px;padding:7px 12px}
+  .fp-hint .hint-sub{display:none}
+  .fp-count{grid-row:auto}
+}
+@media(prefers-reduced-motion:reduce){.fp-tap{display:none}}
