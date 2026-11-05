@@ -44,11 +44,20 @@
     if (t && t.orig === o) el.innerHTML = t.html;
     else if (ai) el.innerHTML = ai.html;
   });
+  // 사진을 바꾸면 <picture> 의 휴대폰용 작은 그림(source)을 잠시 끄고, 되돌리면 다시 켬
+  function setPic(im, src, custom) {
+    var p = im.parentNode;
+    if (p && p.tagName === 'PICTURE') Array.prototype.forEach.call(p.querySelectorAll('source'), function (s) {
+      if (custom) { if (s.dataset.ms == null) s.dataset.ms = s.getAttribute('srcset') || ''; s.removeAttribute('srcset'); }
+      else if (s.dataset.ms != null) s.setAttribute('srcset', s.dataset.ms);
+    });
+    im.src = src;
+  }
   var pics = photos();
   pics.forEach(function (im, i) {
     var k = PAGE + '|img|' + i, orig = im.getAttribute('src');
     im.setAttribute('data-eimg', k); im.setAttribute('data-eorig-src', orig);
-    if (imgs[k] && imgs[k].orig === orig) im.src = imgs[k].data;
+    if (imgs[k] && imgs[k].orig === orig) setPic(im, imgs[k].data, true);
   });
 
   // 2) 수정 모드: 관리자에서 연 경우만 (12시간 안에 발급한 표시)
@@ -177,7 +186,7 @@
   ibtn.addEventListener('click', function () { file.value = ''; file.click(); });
   iundo.addEventListener('click', function () {
     if (!curImg) return; var c = load(); delete (c.images || {})[curImg.getAttribute('data-eimg')];
-    logLine(c, '사진 되돌림 ' + PAGE); save(c); curImg.src = curImg.getAttribute('data-eorig-src'); iundo.hidden = true; msg.textContent = '원래 사진으로 되돌렸습니다'; count();
+    logLine(c, '사진 되돌림 ' + PAGE); save(c); setPic(curImg, curImg.getAttribute('data-eorig-src'), false); iundo.hidden = true; msg.textContent = '원래 사진으로 되돌렸습니다'; count();
   });
   file.addEventListener('change', function () {
     var f = file.files[0]; if (!f || !curImg) return;
@@ -192,7 +201,7 @@
         c.images[target.getAttribute('data-eimg')] = { orig: target.getAttribute('data-eorig-src'), data: data, page: PAGE, name: f.name, at: new Date().toISOString() };
         logLine(c, '사진 교체 ' + PAGE + ' — ' + f.name);
         if (!save(c)) { msg.textContent = '저장 공간이 부족합니다(시안은 브라우저 저장). 더 작은 사진을 쓰세요'; return; }
-        target.src = data; msg.textContent = '사진을 바꿨습니다 (' + Math.round(data.length / 1024) + 'KB)'; count();
+        setPic(target, data, true); msg.textContent = '사진을 바꿨습니다 (' + Math.round(data.length / 1024) + 'KB)'; count();
       };
       img.src = rd.result;
     };
@@ -208,7 +217,7 @@
     Object.keys(c.images || {}).forEach(function (k) { if (k.indexOf(PAGE + '|') === 0) delete c.images[k]; });
     save(c);
     $$('[data-ek]').forEach(function (el) { el.innerHTML = el.getAttribute('data-ehtml'); });
-    pics.forEach(function (im) { im.src = im.getAttribute('data-eorig-src'); });
+    pics.forEach(function (im) { setPic(im, im.getAttribute('data-eorig-src'), false); });
     count(); msg.textContent = '원래대로 되돌렸습니다';
   });
   var pop = document.getElementById('popup'); if (pop) pop.hidden = true;

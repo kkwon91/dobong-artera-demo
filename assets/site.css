@@ -904,3 +904,100 @@ main p em,main li em,main td em,main dd em,.article em{font-style:normal;color:v
   .fp-count{grid-row:auto}
 }
 @media(prefers-reduced-motion:reduce){.fp-tap{display:none}}
+
+/* ═══════════ 11-05 휴대폰 최적화 (tools/mobile_audit.mjs 점검 결과) ═══════════ */
+picture{display:contents}
+/* 가격 막대 숫자: 막대 아래 이름표 규칙(.bar span)이 숫자에 붙지 않게 — PC도 해당 */
+.bar b span{position:static;transform:none;width:auto;max-width:none;font:inherit;color:inherit;line-height:inherit;text-align:inherit;bottom:auto;left:auto}
+/* 첫 화면 넘김 막대: 보이는 막대는 4px 그대로, 누르는 곳은 44px */
+.hero-nav button{height:44px;background:none;overflow:visible}
+.hero-nav button::before{content:"";position:absolute;left:0;right:0;top:50%;height:4px;margin-top:-2px;border-radius:4px;background:rgba(255,255,255,.35)}
+.hero-nav button i{top:50%;bottom:auto;height:4px;margin-top:-2px;border-radius:4px;z-index:1}
+.fp-hint .hint-swipe{display:none}
+@media(max-width:900px){
+  /* 간격: PC 여백 그대로라 너무 길었음 */
+  .sec{padding:56px 0}.faq{padding:56px 0}
+  .sec-head{margin-bottom:30px}
+  .phead{padding:calc(var(--hd) + var(--live) + 44px) 0 44px}
+  .crumb{margin-bottom:16px}
+  .phead-bg{background-image:var(--bg-m,var(--bg))}
+  /* 표가 화면 밖으로 잘리지 않게: 칸 줄바꿈 허용 + 묶음 칸이 표 때문에 넓어지지 않게 */
+  .price-in>*,.quick-in>*,.ov>*,.way>*,.demand>*,.split>*,.compare>*,.calc>*,.fronts>*,.reg>*,.unit-top>*,.board-grid>*{min-width:0}
+  main .tbl:not(.area) th,main .tbl:not(.area) td{white-space:normal;padding:10px 8px;font-size:14px;word-break:keep-all}
+  /* 누르는 곳 44px */
+  .hero-nav{bottom:14px;gap:6px}
+  .hero-scroll{display:none}
+  .logo{padding:5px 0}
+  .crumb a{display:inline-block;padding:12px 6px;margin:-12px -6px}
+  .ft-bottom{gap:4px 18px}.ft-bottom a{display:inline-block;padding:12px 0}
+  .seg button{min-height:44px;padding:10px 16px}
+  .anchor-nav a{padding:12px 14px}
+  .more{padding:10px 0}
+  .fld input[type=range]{height:44px}
+  .pin{width:40px;height:40px;margin:-20px 0 0 -20px}
+  .chk input{width:22px;height:22px;margin-top:0;flex:none}
+  .consent summary{padding:12px 0}
+  .tbl th a{display:inline-block;padding:12px 6px;margin:-12px -6px}
+  .fp-try button{min-height:44px;padding:8px 14px}
+  /* 글자 12px 이상 */
+  .logo-t small{font-size:12px}
+  .ft-call small{font-size:12.5px}
+  .fp-count small{font-size:12px}
+  .bar span{font-size:12px}
+  /* 아이폰: 16px 미만 입력칸은 누르면 화면이 확대됨 */
+  .fld input,.fld select,.fld textarea,.calc-box .fld select{font-size:16px}
+  /* 29개 호실 한눈에: 9칸 격자로 고르게(209호 혼자 한 줄 늘어나던 것) */
+  .cells-row{display:grid;grid-template-columns:30px repeat(9,minmax(0,1fr));gap:4px;align-items:end}
+  .cells-row .lbl{width:auto;align-self:center}
+  .cells-row:has(> .cell:nth-child(11)) .lbl{grid-row:span 2}
+  .cell{min-width:0;height:44px;font-size:12px;padding-bottom:6px}
+  /* 배치도: 호실이 손가락으로 누를 만한 크기(약 38px)가 되게 키우고 옆으로 밀기 */
+  .fp-svg{min-width:1240px}
+  .fp-hint .hint-swipe{display:inline;font-weight:600;opacity:.9;padding-left:8px;border-left:1px solid rgba(255,255,255,.45)}
+  /* 가격 막대: 빈 공간 줄이고 숫자는 막대 위에 크게 */
+  .bars,.bars-h{height:260px;margin-bottom:56px}
+  .bar b{font-size:17px;top:-28px}
+  /* 첫 화면 넘김 표시 아래 여백 */
+  .hero-copy,.hero-copy-c{padding-bottom:84px}
+}
+@media(max-width:380px){
+  .cells-row{grid-template-columns:26px repeat(9,minmax(0,1fr));gap:3px}
+  .cell{font-size:11.5px}
+}
+/* 기획 요약 쪽: 긴 글이 화면 밖으로 */
+.chk li{overflow-wrap:anywhere}
+@media(max-width:900px){
+  .quick::before{background-image:var(--bg-m,var(--bg))}
+  .popup-img{background-image:url("../assets/img/m/kv-b.jpg")}
+}
+
+/* 휴대폰 속도 2차(11-05): 기기 기본 글꼴(아이폰은 애플 SD 고딕 Neo — 프리텐다드와 거의 같음), 첫 화면 2번 장면 사진은 페이지가 다 뜬 뒤 */
+@media(max-width:900px){
+  body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
+}
+.hero:not(.loaded) .hero-slide:not(.on) .hero-media{display:none}
+
+/* 휴대폰 3차(11-05) */
+@media(max-width:900px){
+  .fp-svg{min-width:1320px}                       /* 호실 폭 약 40px */
+  .brand .bs,.bf p small,.price p small,p>small{font-size:12px}
+  .crumb a{padding:12px 10px;margin:-12px -10px}
+  .ft-bottom a.ft-admin{padding:12px 6px}
+}
+@media(max-width:480px){
+  /* 29개 호실 한눈에: 좁은 폰은 6칸 격자(칸 폭 약 40px) */
+  .cells-row{grid-template-columns:30px repeat(6,minmax(0,1fr))}
+  .cells-row:has(> .cell:nth-child(8)) .lbl{grid-row:span 2}
+  .cells-row:has(> .cell:nth-child(14)) .lbl{grid-row:span 3}
+  .cell{font-size:12.5px}
+}
+@media(max-width:380px){
+  .cells-row{grid-template-columns:26px repeat(6,minmax(0,1fr));gap:4px}
+  .cell{font-size:12px}
+  main .tbl:not(.area) th,main .tbl:not(.area) td{padding:9px 6px;font-size:13px}
+}
+/* 휴대폰 4차(11-05): 360px 에서 계산기 호실 선택칸·소식 탭이 몇 px 넘던 것 */
+.calc-box>*{min-width:0}.fld select{width:100%;min-width:0;max-width:100%;text-overflow:ellipsis}
+@media(max-width:900px){.news-tabs{flex-wrap:wrap;max-width:100%}}
+/* 휴대폰 5차(11-05) */
+@media(max-width:900px){.fp-hint .hint-pc{display:none}.fp-hint .hint-mo{display:inline}.fp-tip .t-st{font-size:12px}.demand .tbl th[scope=row]{overflow-wrap:anywhere}}

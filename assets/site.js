@@ -130,21 +130,32 @@
       cur = (i + slides.length) % slides.length;
       slides[cur].classList.add('on'); dots[cur].classList.remove('on'); void dots[cur].offsetWidth; dots[cur].classList.add('on');
       clearTimeout(timer); if (!EDITING) timer = setTimeout(function () { go(cur + 1); }, 9500);
+      heroVid();
     }
     dots.forEach(function (d, i) { d.addEventListener('click', function () { go(i); }); });
     if (!EDITING) timer = setTimeout(function () { go(1); }, 9500);
   }
   // 영상 파일이 있을 때만 재생 (없으면 이미지 유지)
+  // 휴대폰은 세로로 자른 가벼운 판(-m). 데이터 절약·2G/3G면 영상 없이 사진만. 첫 화면 영상은 페이지가 다 뜬 뒤 지금 보이는 장면만 받음
+  var NET = navigator.connection || {}, SLOW = !!NET.saveData || /(^|-)(2g|3g)$/.test(NET.effectiveType || '');
+  var pageLoaded = document.readyState === 'complete';
+  function heroVid() { if (!pageLoaded) return; var on = $('.hero-slide.on video[data-video]'); if (on && on._load) on._load(); }
+  function heroReady() { var hh = $('[data-hero]'); if (hh) hh.classList.add('loaded'); } // 2번 장면 사진은 다 뜬 뒤 받음(CSS)
+  if (!pageLoaded) addEventListener('load', function () { pageLoaded = true; heroReady(); setTimeout(heroVid, 600); }); else heroReady();
   $$('video[data-video]').forEach(function (v) {
+    if (SLOW || REDUCE) return;
     var src = (innerWidth < 900 && v.getAttribute('data-video-sm')) || v.getAttribute('data-video');
+    v._load = function () { if (v._done) return; v._done = 1; load(); };
+    if (v.closest('.hero-slide')) return;
     function load() {
       v.addEventListener('playing', function () { v.classList.add('ready'); }, { once: true });
       v.addEventListener('error', function () { v.remove(); }, { once: true });
       v.muted = true; v.preload = 'auto'; v.src = src; v.load();
       var p = v.play(); if (p && p.catch) p.catch(function () {});
     }
-    if (io) { var vo = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { load(); vo.disconnect(); } }); vo.observe(v.parentNode); } else load();
+    if (io) { var vo = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { v._load(); vo.disconnect(); } }); vo.observe(v.parentNode); } else v._load();
   });
+  if (pageLoaded) setTimeout(heroVid, 600);
 
   // ── 입점 현황 보드
   $$('[data-cells]').forEach(function (box) {
@@ -250,6 +261,12 @@
   function hideTip() { if (tip) tip.hidden = true; }
   $$('[data-fp]').forEach(function (fp) {
     fp.dataset.mode = 'lease'; fp.dataset.dong = 'all';
+    // 배치도 바탕 항공사진(230KB)은 배치도가 가까워지면 받음
+    var fimg = $('.fp-img', fp);
+    if (fimg && fimg.getAttribute('data-href')) {
+      var setImg = function () { fimg.setAttribute('href', fimg.getAttribute('data-href')); fimg.removeAttribute('data-href'); };
+      if ('IntersectionObserver' in window) { var lo = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { lo.disconnect(); setImg(); } }, { rootMargin: '900px 0px' }); lo.observe(fp); } else setImg();
+    }
     paint(fp);
     $$('[data-mode]', fp).forEach(function (b) { b.addEventListener('click', function () { $$('[data-mode]', fp).forEach(function (x) { x.classList.toggle('on', x === b); }); fp.dataset.mode = b.dataset.mode; paint(fp); }); });
     $$('[data-dong]', fp).forEach(function (b) { b.addEventListener('click', function () { $$('[data-dong]', fp).forEach(function (x) { x.classList.toggle('on', x === b); }); fp.dataset.dong = b.dataset.dong; paint(fp); }); });
