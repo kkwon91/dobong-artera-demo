@@ -26,17 +26,23 @@
   function logoOf(brand) { var l = LOGOS[brand]; return l && !logoOff[brand] ? B + 'assets/img/brands/' + l.file : ''; }
   var ZONES = A.zones || {};
   function leaseOf(u) { return LEASE[u.s.lease] || LEASE.open; }
+  var AV = A.avail || { label: '영업 중 · 분양 가능', color: '#6B4FD8', text: '#fff' };
+  function isAvail(u) { return u.s.lease === 'operating' && u.s.sale === 'available'; } // 영업 중이면서 지금 분양 가능
   function displayLabel(u) {
     if (u.s.sale === 'sold' && u.s.lease === 'open') return '분양완료';
-    return leaseOf(u).label;
+    if (isAvail(u)) return AV.label;
+    return leaseOf(u).label + (u.s.sale === 'available' ? ' · 분양 가능' : '');
   }
   function displayColor(u) {
     if (u.s.sale === 'sold' && u.s.lease === 'open') return { color: '#9AA1B4', text: '#fff' };
+    if (isAvail(u)) return AV;
     return leaseOf(u);
   }
+  function rangeOf(nos) { return nos.length > 2 ? nos[0] + '~' + nos[nos.length - 1] + '호' : nos.join('·') + '호'; }
   function counts() {
-    var c = { operating: 0, leased: 0, loi: 0, open: 0, sold: 0, soldOpen: 0 }, deal = { operating: {}, leased: {}, loi: {} };
+    var c = { operating: 0, leased: 0, loi: 0, open: 0, sold: 0, soldOpen: 0, avail: 0 }, deal = { operating: {}, leased: {}, loi: {} };
     UNITS.forEach(function (u) {
+      if (isAvail(u)) c.avail++;
       if (u.s.sale === 'sold') c.sold++;
       if (u.s.sale === 'sold' && u.s.lease === 'open') c.soldOpen++;
       else { c[u.s.lease]++; if (deal[u.s.lease]) deal[u.s.lease][String(u.s.brand || '').trim() || '#' + u.no] = 1; }
@@ -70,7 +76,7 @@
   if (live) {
     live.innerHTML = [
       ['operating', '영업 중', C.operating, '실'], ['leased', '임차 확정', C.leased, '실'], ['loi', 'LOI 접수', C.loiDeals, '건'], ['open', '모집 중', C.open + C.soldOpen, '실']
-    ].map(function (x) { var l = LEASE[x[0]]; return '<span class="chip"><i style="background:' + (x[0] === 'open' ? '#fff' : l.color) + '"></i>' + x[1] + ' <b><span data-count-to="' + x[2] + '">0</span>' + x[3] + '</b></span>'; }).join(' · ') +
+    ].filter(function (x) { return x[2] > 0 || x[0] === 'open'; }).map(function (x) { var l = LEASE[x[0]]; return '<span class="chip"><i style="background:' + (x[0] === 'open' ? '#fff' : l.color) + '"></i>' + x[1] + ' <b><span data-count-to="' + x[2] + '">0</span>' + x[3] + '</b></span>'; }).join(' · ') +
       ' <a href="' + B + 'floorplan/">배치도에서 보기</a>';
   }
 
@@ -166,7 +172,7 @@
       }).join('') + '</div>';
     }).join('');
     box.innerHTML = '<div><p class="eyebrow" style="margin:0">29개 호실 한눈에</p></div>' + rows +
-      '<div class="cells-legend"><span><i style="background:' + LEASE.operating.color + '"></i>영업 중</span><span><i style="background:' + LEASE.leased.color + '"></i>임차 확정</span><span><i style="background:' + LEASE.loi.color + '"></i>LOI 접수</span><span><i style="background:#9AA1B4"></i>분양완료</span><span><i style="background:#fff;border:1.5px dashed #C9D0E4"></i>모집 중</span></div>';
+      '<div class="cells-legend"><span><i style="background:' + LEASE.operating.color + '"></i>영업 중</span>' + (C.avail ? '<span><i style="background:' + AV.color + '"></i>' + AV.label + '</span>' : '') + (C.leased ? '<span><i style="background:' + LEASE.leased.color + '"></i>임차 확정</span>' : '') + '<span><i style="background:' + LEASE.loi.color + '"></i>LOI 접수</span><span><i style="background:#9AA1B4"></i>분양완료</span><span><i style="background:#fff;border:1.5px dashed #C9D0E4"></i>모집 중</span></div>';
     box.addEventListener('click', function (e) {
       var b = e.target.closest('[data-cell]'); if (!b) return;
       var fp = $('[data-fp]');
@@ -175,12 +181,14 @@
     });
   });
   $$('[data-stats]').forEach(function (box) {
-    box.innerHTML = [
-      ['영업 중', C.operating, LEASE.operating.color, 'LX지인 · 컴포즈커피'],
-      ['임차 확정', C.leased, LEASE.leased.color, '이마트 에브리데이'],
-      ['LOI 접수', C.loiDeals, LEASE.loi.color, C.loi + '개 호실 · 입점의향서 단계 · 입점 확정 아님', '건'],
-      ['분양완료', C.sold, '#9AA1B4', '105 · 110 · 203 · 209호'],
-    ].map(function (s) { return '<div class="stat" style="--c:' + s[2] + '"><b><span data-count-to="' + s[1] + '">' + s[1] + '</span><small>' + (s[4] || '실') + '</small></b><span>' + s[0] + '</span><small class="d">' + s[3] + '</small></div>'; }).join('');
+    var brandsOf = function (f) { var o = []; UNITS.forEach(function (u) { if (f(u) && u.s.brand && o.indexOf(u.s.brand) < 0) o.push(u.s.brand); }); return o.join(' · '); };
+    var av = UNITS.filter(isAvail);
+    var rows = [['영업 중', C.operating, LEASE.operating.color, brandsOf(function (u) { return u.s.lease === 'operating'; })]];
+    if (C.avail) rows.push(['분양 가능', C.avail, AV.color, '영업 중인 매장 그대로 · ' + brandsOf(isAvail) + ' ' + rangeOf(av.map(function (u) { return u.no; }))]);
+    if (C.leased) rows.push(['임차 확정', C.leased, LEASE.leased.color, brandsOf(function (u) { return u.s.lease === 'leased'; })]);
+    rows.push(['LOI 접수', C.loiDeals, LEASE.loi.color, C.loi + '개 호실 · 입점의향서 단계 · 입점 확정 아님', '건']);
+    rows.push(['분양완료', C.sold, '#9AA1B4', UNITS.filter(function (u) { return u.s.sale === 'sold'; }).map(function (u) { return u.no; }).join(' · ') + '호']);
+    box.innerHTML = rows.map(function (s) { return '<div class="stat" style="--c:' + s[2] + '"><b><span data-count-to="' + s[1] + '">' + s[1] + '</span><small>' + (s[4] || '실') + '</small></b><span>' + s[0] + '</span><small class="d">' + s[3] + '</small></div>'; }).join('');
     if (io) io.observe(box);
   });
   replayOnHover('[data-stats] .stat, .mini-dist > div, .dist-card, .live-bar');
@@ -188,14 +196,14 @@
     var seen = {}, list = [];
     UNITS.forEach(function (u) {
       if (!u.s.brand || u.s.lease === 'open') return;
-      if (!seen[u.s.brand]) { seen[u.s.brand] = { brand: u.s.brand, units: [], lease: u.s.lease, note: u.s.note }; list.push(seen[u.s.brand]); }
+      if (!seen[u.s.brand]) { seen[u.s.brand] = { brand: u.s.brand, units: [], lease: u.s.lease, note: u.s.note, av: isAvail(u) }; list.push(seen[u.s.brand]); }
       seen[u.s.brand].units.push(u.no);
     });
     var order = { operating: 0, leased: 1, loi: 2 };
     list.sort(function (a, b) { return order[a.lease] - order[b.lease]; });
     box.innerHTML = list.map(function (x) {
-      var l = LEASE[x.lease];
-      var range = x.units.length > 2 ? x.units[0] + '~' + x.units[x.units.length - 1] + '호' : x.units.join('·') + '호';
+      var l = x.av ? AV : LEASE[x.lease];
+      var range = rangeOf(x.units);
       var lg = logoOf(x.brand);
       return '<div class="brand"><span class="bs" style="background:' + l.color + '">' + l.label + '</span><div class="blogo">' + (lg ? '<img src="' + lg + '" alt="' + esc(x.brand) + ' 로고" loading="lazy">' : '<b class="bn">' + esc(x.brand) + '</b>') + '</div><b class="bn2">' + esc(x.brand) + '</b><span class="bu">' + range + ' · ' + esc((x.note || '').split('·')[0]) + '</span></div>';
     }).join('');
@@ -214,10 +222,11 @@
     var lg = $('[data-legend]', fp);
     if (lg) lg.innerHTML = mode === 'zone'
       ? Object.keys(ZONES).map(function (k) { return '<span><i style="background:' + ZONES[k].color + '"></i>' + ZONES[k].label.replace(' zone', '') + '</span>'; }).join('')
-      : [['operating'], ['leased'], ['loi']].map(function (k) { var l = LEASE[k[0]]; return '<span><i style="background:' + l.color + '"></i>' + l.label + '</span>'; }).join('') + '<span><i style="background:#9AA1B4"></i>분양완료</span><span><i style="background:#fff"></i>모집 중</span>';
+      : [['operating', LEASE.operating, 1], ['avail', AV, C.avail], ['leased', LEASE.leased, C.leased], ['loi', LEASE.loi, 1]].filter(function (k) { return k[2]; }).map(function (k) { var l = k[1]; return '<span><i style="background:' + l.color + '"></i>' + l.label + '</span>'; }).join('') + '<span><i style="background:#9AA1B4"></i>분양완료</span><span><i style="background:#fff"></i>모집 중</span>';
     var ct = $('[data-count]', fp);
     if (ct) {
-      ct.innerHTML = [['영업 중', C.operating, LEASE.operating.color], ['임차 확정', C.leased, LEASE.leased.color], ['LOI 접수', C.loiDeals, LEASE.loi.color, '건', C.loi + '개 호실'], ['분양완료(공실)', C.soldOpen, '#9AA1B4'], ['임차인 모집 중', C.open, '#fff']]
+      ct.innerHTML = [['영업 중', C.operating - C.avail, LEASE.operating.color], [AV.label, C.avail, AV.color], ['임차 확정', C.leased, LEASE.leased.color], ['LOI 접수', C.loiDeals, LEASE.loi.color, '건', C.loi + '개 호실'], ['분양완료(공실)', C.soldOpen, '#9AA1B4'], ['임차인 모집 중', C.open, '#fff']]
+        .filter(function (r) { return r[1] > 0 || r[0] === '임차인 모집 중'; })
         .map(function (r) { return '<div' + (r[4] ? ' title="' + r[4] + '"' : '') + '><span><i style="background:' + r[2] + '"></i>' + r[0] + (r[4] ? ' <small>' + r[4] + '</small>' : '') + '</span><b><span data-count-to="' + r[1] + '">0</span>' + (r[3] || '실') + '</b></div>'; }).join('');
       if (fp.classList.contains('in')) $$('[data-count-to]', ct).forEach(function (el) { countUp(el, true); });
     }
@@ -226,7 +235,7 @@
     var c = displayColor(u), z = u.zone ? ZONES[u.zone] : null;
     return '<div class="pn"><button class="pn-close" aria-label="닫기">✕</button>' +
       '<div class="pn-top"><span class="pn-no">' + u.no + '<small>호 · ' + u.dong + '동</small></span><span class="pn-st" style="background:' + c.color + ';color:' + c.text + (c.color === '#FFFFFF' ? ';border:1.5px solid #1F2761' : '') + '">' + displayLabel(u) + '</span></div>' +
-      (u.s.brand ? '<div class="pn-brand">' + (logoOf(u.s.brand) ? '<img class="pn-logo" src="' + logoOf(u.s.brand) + '" alt="' + esc(u.s.brand) + ' 로고">' : '') + '<b>' + esc(u.s.brand) + '</b><span>' + esc(u.s.note) + '</span>' + (u.s.lease === 'loi' ? '<em class="pn-loi">LOI는 입점 확정이 아닌 협의 단계입니다</em>' : '') + '</div>' : '<div class="pn-brand"><b>' + (u.s.sale === 'sold' ? '분양완료 호실' : '입점 브랜드 모집 중') + '</b><span>' + esc(u.s.note || (z ? z.md + ' 업종 추천' : '업종 제한 없이 상담')) + '</span></div>') +
+      (u.s.brand ? '<div class="pn-brand">' + (logoOf(u.s.brand) ? '<img class="pn-logo" src="' + logoOf(u.s.brand) + '" alt="' + esc(u.s.brand) + ' 로고">' : '') + '<b>' + esc(u.s.brand) + '</b><span>' + esc(u.s.note) + '</span>' + (u.s.lease === 'loi' ? '<em class="pn-loi">LOI는 입점 확정이 아닌 협의 단계입니다</em>' : '') + (isAvail(u) ? '<em class="pn-avail">매장이 영업 중인 채로 분양하는 호실입니다</em>' : '') + '</div>' : '<div class="pn-brand"><b>' + (u.s.sale === 'sold' ? '분양완료 호실' : '입점 브랜드 모집 중') + '</b><span>' + esc(u.s.note || (z ? z.md + ' 업종 추천' : '업종 제한 없이 상담')) + '</span></div>') +
       '<dl class="pn-dl"><div><dt>전용면적</dt><dd>' + u.ex.toFixed(2) + '㎡ <small>' + u.exP.toFixed(2) + '평</small></dd></div><div><dt>계약면적</dt><dd>' + u.ct.toFixed(2) + '㎡ <small>' + u.ctP.toFixed(2) + '평</small></dd></div>' +
       '<div><dt>분양</dt><dd>' + (A.sale[u.s.sale] || '분양 예정') + '</dd></div><div><dt>임차</dt><dd>' + leaseOf(u).label + '</dd></div></dl>' +
       (z ? '<p class="pn-zone"><i style="background:' + z.color + '"></i><span><b>' + z.label + '</b> · ' + esc(z.where) + '<br>' + esc(z.md) + '</span></p>' : '') +
@@ -269,7 +278,7 @@
     }
     paint(fp);
     $$('[data-mode]', fp).forEach(function (b) { b.addEventListener('click', function () { $$('[data-mode]', fp).forEach(function (x) { x.classList.toggle('on', x === b); }); fp.dataset.mode = b.dataset.mode; paint(fp); }); });
-    $$('[data-dong]', fp).forEach(function (b) { b.addEventListener('click', function () { $$('[data-dong]', fp).forEach(function (x) { x.classList.toggle('on', x === b); }); fp.dataset.dong = b.dataset.dong; paint(fp); }); });
+    $$('[data-dong]', fp).forEach(function (b) { b.addEventListener('click', function () { $$('[data-dong]', fp).forEach(function (x) { x.classList.toggle('on', x === b); }); fp.dataset.dong = b.dataset.dong; paint(fp); goDong(b.dataset.dong); }); });
     var hover = matchMedia('(hover:hover)').matches;
     $$('.u', fp).forEach(function (g) {
       var no = g.getAttribute('data-no'), u = byNo[no];
@@ -299,7 +308,6 @@
     addEventListener('scroll', function () { if (fp.classList.contains('demo')) hideTip(); }, { passive: true });
     fp.addEventListener('click', function (e) { var t = e.target.closest('[data-try]'); if (t) { stopDemo(); selectUnit(fp, t.getAttribute('data-try')); } });
     var hintEl = $('.fp-hint', fp);
-    if (hintEl && stage) stage.addEventListener('scroll', function () { hintEl.style.translate = stage.scrollLeft + 'px 0'; }, { passive: true }); // 옆으로 밀어도 안내 띠는 가운데
     function center(g) { var r = g.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
     function moveTap(g) {
       var c = center(g), sr = stage.getBoundingClientRect();
@@ -333,6 +341,61 @@
       var dio = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { dio.disconnect(); runDemo(); } }, { threshold: 0.6 });
       dio.observe(stage);
     }
+
+    // ── 확대·축소(+ − 전체 단추, 두 손가락, 노트북 터치패드) · 동 단추 누르면 그 동으로 이동 (11-05 김세연 님 요청)
+    var svg = $('.fp-svg', fp), zb = $('[data-zoom-box]', fp), H0 = 0;
+    function svgW() { return svg.getBoundingClientRect().width; }
+    function fitW() { return stage.clientWidth; }
+    function maxW() { return Math.max(fitW() * 3, 2000); }
+    function zoomBtns() {
+      if (!zb || !stage) return;
+      var w = svgW();
+      $('[data-zoom="in"]', zb).disabled = w >= maxW() - 1;
+      $('[data-zoom="out"]', zb).disabled = $('[data-zoom="fit"]', zb).disabled = w <= fitW() + 1;
+    }
+    function setW(w, cx, cy) { // cx·cy: 화면 좌표의 기준점(그 자리가 그대로 있게 확대)
+      if (!stage || !svg) return;
+      if (!H0) H0 = stage.offsetHeight;
+      var sr = stage.getBoundingClientRect(), r0 = svg.getBoundingClientRect();
+      w = Math.max(fitW(), Math.min(maxW(), w));
+      var fx = cx == null ? sr.width / 2 : cx - sr.left, fy = cy == null ? sr.height / 2 : cy - sr.top;
+      var px = (stage.scrollLeft + fx) / r0.width, py = (stage.scrollTop + fy) / r0.height, h = w * r0.height / r0.width;
+      svg.style.minWidth = '0'; svg.style.width = w + 'px';
+      stage.style.height = Math.round(Math.min(H0, h + stage.offsetHeight - stage.clientHeight)) + 'px';
+      stage.scrollLeft = px * w - fx; stage.scrollTop = py * h - fy;
+      fp.classList.add('zoomed'); zoomBtns();
+    }
+    if (zb) zb.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-zoom]'); if (!b || b.disabled) return;
+      var k = b.getAttribute('data-zoom');
+      setW(k === 'fit' ? 0 : svgW() * (k === 'in' ? 1.5 : 1 / 1.5));
+    });
+    if (stage && svg) {
+      var pin = null;
+      var tdist = function (t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); };
+      stage.addEventListener('touchstart', function (e) { if (e.touches.length === 2) pin = { d: tdist(e.touches), w: svgW() }; }, { passive: true });
+      stage.addEventListener('touchmove', function (e) {
+        if (!pin || e.touches.length !== 2) return;
+        e.preventDefault();
+        var t = e.touches; setW(pin.w * tdist(t) / pin.d, (t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2);
+      }, { passive: false });
+      stage.addEventListener('touchend', function (e) { if (e.touches.length < 2) pin = null; }, { passive: true });
+      stage.addEventListener('wheel', function (e) { if (!e.ctrlKey) return; e.preventDefault(); setW(svgW() * Math.exp(-e.deltaY / 300), e.clientX, e.clientY); }, { passive: false });
+      addEventListener('resize', function () { if (fp.classList.contains('zoomed')) { svg.style.width = svg.style.minWidth = stage.style.height = ''; H0 = 0; fp.classList.remove('zoomed'); } zoomBtns(); });
+      zoomBtns();
+    }
+    function goDong(d) {
+      if (!stage || d === 'all' || stage.scrollWidth <= stage.clientWidth + 2) return;
+      var sr = stage.getBoundingClientRect(), l = 1e9, r = -1e9, t = 1e9, bt = -1e9;
+      $$('.u', fp).forEach(function (g) {
+        if (String(byNo[g.getAttribute('data-no')].dong) !== d) return;
+        var q = g.getBoundingClientRect(); l = Math.min(l, q.left); r = Math.max(r, q.right); t = Math.min(t, q.top); bt = Math.max(bt, q.bottom);
+      });
+      if (l > r) return;
+      var x = r - l > sr.width - 40 ? l - sr.left - 20 : (l + r) / 2 - (sr.left + sr.width / 2);
+      var y = bt - t > sr.height - 40 ? t - sr.top - 20 : (t + bt) / 2 - (sr.top + sr.height / 2);
+      stage.scrollBy({ left: x, top: y, behavior: REDUCE ? 'auto' : 'smooth' });
+    }
   });
 
   // 면적표 현황 칸 갱신 + 동 필터
@@ -340,7 +403,7 @@
   $$('[data-row]').forEach(function (tr) {
     var u = byNo[tr.getAttribute('data-row')]; if (!u) return;
     var td = $('[data-cell-status]', tr);
-    if (td) td.textContent = u.s.sale === 'sold' ? '분양완료' + (u.s.lease === 'operating' ? ' · ' + u.s.brand + ' 영업 중' : '') : leaseOf(u).label + (u.s.brand ? ' · ' + u.s.brand : '');
+    if (td) td.textContent = u.s.sale === 'sold' ? '분양완료' + (u.s.lease === 'operating' ? ' · ' + u.s.brand + ' 영업 중' : '') : displayLabel(u) + (u.s.brand ? ' · ' + u.s.brand : '');
     tr.classList.toggle('sold', u.s.sale === 'sold');
   });
   $$('[data-tbl-filter]').forEach(function (bar) {

@@ -1001,3 +1001,18 @@ picture{display:contents}
 @media(max-width:900px){.news-tabs{flex-wrap:wrap;max-width:100%}}
 /* 휴대폰 5차(11-05) */
 @media(max-width:900px){.fp-hint .hint-pc{display:none}.fp-hint .hint-mo{display:inline}.fp-tip .t-st{font-size:12px}.demand .tbl th[scope=row]{overflow-wrap:anywhere}}
+
+/* 건설원가 막대 삭제(11-05): 막대 2개는 가운데로 모아 너무 넓어지지 않게 */
+.bars-2{justify-content:center;gap:56px}
+.bars-2 .bar{flex:0 1 150px}
+@media(max-width:900px){.bars-2{gap:36px}.bars-2 .bar{flex-basis:120px}}
+
+/* 11-05 김세연 님 의견: 영업 중·분양 가능 표시, 배치도 확대·축소 */
+.pn-avail{display:block;margin-top:8px;font-style:normal;font-size:13px;font-weight:700;color:#6B4FD8}
+.fp-view{position:relative;min-width:0}
+.fp-stage{touch-action:pan-x pan-y}
+.fp-zoom{position:absolute;right:12px;bottom:12px;z-index:5;display:flex;background:#fff;border-radius:4px;box-shadow:0 4px 14px rgba(0,0,0,.35);overflow:hidden}
+.fp-zoom button{min-width:44px;height:44px;padding:0 10px;font-size:22px;font-weight:700;line-height:1;color:var(--navy);background:#fff;border-right:1px solid var(--line)}
+.fp-zoom button:last-child{border-right:0;font-size:13px}
+.fp-zoom button:disabled{color:#C3C8D4;cursor:default}
+.fp-zoom button:not(:disabled):hover{background:var(--gray)}

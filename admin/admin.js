@@ -9,7 +9,7 @@
 
   // 광고 위험 표현 (공정위 부동산 심사지침 기준 실무 목록)
   var RISKY = [
-    [/최저가|최저 분양가|가장 싸|가장 저렴/, '최상급 가격 표현', '"추정 건설원가 대비 ○% (114호 예시)"처럼 근거와 기준을 붙이세요'],
+    [/최저가|최저 분양가|가장 싸|가장 저렴/, '최상급 가격 표현', '"114호 예시 전용 3.3㎡당 ○만원"처럼 근거와 기준을 붙이세요'],
     [/최고|최대 규모|유일|독보적|압도적|1위|넘버원/, '근거 없는 최상급', '객관적 근거(출처·기준)를 함께 쓰거나 빼세요'],
     [/두\s?번\s?다시|마지막 기회|마지막 분양|곧 마감|완판 임박|선착순 마감/, '희소성 과장', '실제 잔여 호실·기한이 있을 때만, 사실 그대로'],
     [/보장|확정\s?수익|확정\s?수익률|무조건|100\s?%|원금 보장|평생 임대/, '수익·임대 보장', '수익률은 산출 방법과 함께 "예시·보장 아님"으로만'],
@@ -106,7 +106,8 @@
   }
 
   function stateOf(no) { return Object.assign({ sale: 'selling', lease: 'open', brand: '', note: '' }, A.stateSeed[no] || {}, (db.state || {})[no] || {}); }
-  function colorOf(s) { if (s.sale === 'sold' && s.lease === 'open') return { color: '#9AA1B4', text: '#fff', label: '분양완료' }; var l = LEASE[s.lease]; return { color: l.color, text: l.text, label: l.label }; }
+  var AV = A.avail || { label: '영업 중 · 분양 가능', color: '#6B4FD8', text: '#fff' };
+  function colorOf(s) { if (s.sale === 'sold' && s.lease === 'open') return { color: '#9AA1B4', text: '#fff', label: '분양완료' }; if (s.lease === 'operating' && s.sale === 'available') return { color: AV.color, text: AV.text, label: AV.label }; var l = LEASE[s.lease]; return { color: l.color, text: l.text, label: l.label }; }
   function counts() {
     var c = { operating: 0, leased: 0, loi: 0, open: 0, soldOpen: 0, sold: 0 };
     var loi = {};
@@ -153,7 +154,7 @@
         var cx = p.reduce(function (a, b) { return a + b[0]; }, 0) / p.length, cy = p.reduce(function (a, b) { return a + b[1]; }, 0) / p.length;
         return '<g class="u' + (sel === u.no ? ' on' : '') + '" data-no="' + u.no + '" style="--f:' + c.color + ';--t:' + (c.color === '#FFFFFF' ? '#1F2761' : '#fff') + '"><polygon points="' + u.poly + '"/><text x="' + cx.toFixed(0) + '" y="' + (cy + 6).toFixed(0) + '">' + u.no + '</text></g>';
       }).join('') + '</svg></div>' +
-      '<div class="legend"><span><i style="background:' + LEASE.operating.color + '"></i>영업 중</span><span><i style="background:' + LEASE.leased.color + '"></i>임차 확정</span><span><i style="background:' + LEASE.loi.color + '"></i>LOI 접수</span><span><i style="background:#9AA1B4"></i>분양완료(공실)</span><span><i style="background:#fff"></i>모집 중</span></div>';
+      '<div class="legend"><span><i style="background:' + LEASE.operating.color + '"></i>영업 중</span><span><i style="background:' + AV.color + '"></i>' + AV.label + '</span><span><i style="background:' + LEASE.leased.color + '"></i>임차 확정</span><span><i style="background:' + LEASE.loi.color + '"></i>LOI 접수</span><span><i style="background:#9AA1B4"></i>분양완료(공실)</span><span><i style="background:#fff"></i>모집 중</span></div>';
   }
 
   var VIEWS = {};
