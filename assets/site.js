@@ -272,7 +272,7 @@
       (brandText(u) ? '<div class="pn-brand">' + logosHtml(u) + '<b>' + esc(brandText(u)) + '</b><span>' + esc(u.s.note) + '</span>' + (u.s.lease === 'loi' ? '<em class="pn-loi">LOI는 입점 확정이 아닌 협의 단계입니다</em>' : '') + (isAvail(u) ? '<em class="pn-avail">매장이 영업 중인 채로 분양하는 호실입니다</em>' : '') + '</div>' : '<div class="pn-brand"><b>' + (u.s.sale === 'sold' ? '분양 완료 호실' : '입점 브랜드 모집 중') + '</b><span>' + esc(u.s.note || (z ? z.md + ' 업종 추천' : '업종 제한 없이 상담')) + '</span></div>') +
       '<dl class="pn-dl"><div><dt>전용면적</dt><dd>' + u.ex.toFixed(2) + '㎡ <small>' + u.exP.toFixed(2) + '평</small></dd></div><div><dt>계약면적</dt><dd>' + u.ct.toFixed(2) + '㎡ <small>' + u.ctP.toFixed(2) + '평</small></dd></div>' +
       '<div><dt>분양</dt><dd>' + (A.sale[u.s.sale] || '분양 예정') + '</dd></div><div><dt>임차</dt><dd>' + leaseOf(u).label + '</dd></div></dl>' +
-      (z ? '<p class="pn-zone"><i style="background:' + z.color + '"></i><span><b>' + z.label + '</b> · ' + esc(z.where) + '<br>' + esc(z.md) + '</span></p>' : '') +
+      (z ? '<p class="pn-zone"><i style="background:' + z.color + '"></i><span><b>' + z.label + '</b>' + (brandText(u) || u.s.note ? '<br>' + esc(z.md) : '') + '</span></p>' : '') +
       '<div class="pn-btns"><a class="btn btn-navy" href="' + B + 'units/' + u.no + '/">' + u.no + '호 자세히 보기</a>' + (u.s.sale !== 'sold' ? '<a class="btn btn-orange" href="' + B + 'register/?kind=invest&unit=' + u.no + '#invest">이 호실 투자 문의</a>' : '') +
       (u.s.lease === 'open' || u.s.lease === 'loi' ? '<a class="btn btn-line" href="' + B + 'register/?kind=lease&unit=' + u.no + '#lease">이 호실 임차 문의</a>' : '') + '</div></div>';
   }
