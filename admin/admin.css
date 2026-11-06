@@ -45,7 +45,7 @@ input,select,textarea{font:inherit;color:inherit}
 .card .d{color:var(--sub);font-size:13.5px;margin-bottom:14px}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .between{justify-content:space-between}
-.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
 .kpi{background:#fff;border-radius:4px;padding:18px;box-shadow:0 4px 16px rgba(20,26,69,.05);border-left:5px solid var(--c)}
 .kpi b{font-size:32px;font-weight:900;display:block;line-height:1.1}
 .kpi span{color:var(--sub);font-weight:700;font-size:13px}

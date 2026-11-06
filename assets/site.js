@@ -26,28 +26,60 @@
   function logoOf(brand) { var l = LOGOS[brand]; return l && !logoOff[brand] ? B + 'assets/img/brands/' + l.file : ''; }
   var ZONES = A.zones || {};
   function leaseOf(u) { return LEASE[u.s.lease] || LEASE.open; }
-  var AV = A.avail || { label: '영업 중 · 분양 가능', color: '#6B4FD8', text: '#fff' };
-  function isAvail(u) { return u.s.lease === 'operating' && u.s.sale === 'available'; } // 영업 중이면서 지금 분양 가능
+  var AV = A.avail || { label: '영업 중 (분양 가능)', color: '#6B4FD8', text: '#fff' };
+  var OS = A.opsold || { label: '영업 중 (분양 완료)', color: '#1E2A6E', text: '#fff' };
+  var SO = A.soldopen || { label: '분양 완료', color: '#9AA1B4', text: '#fff' };
+  var LOI_LONG = (LEASE.loi && LEASE.loi.long) || 'LOI 접수 완료 (입점의향서)';
+  // 한 호실에 브랜드가 여럿이면 관리자에서 쉼표(,)·+ 로 나눠 적음 (예: 101호 팜프라자, 투썸플레이스)
+  function brandsOf(u) { return String(u.s.brand || '').split(/\s*[,+\/·，]\s*/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function brandText(u) { return brandsOf(u).join(' · '); }
+  function logosHtml(u) {
+    var ls = brandsOf(u).map(function (b) { return [b, logoOf(b)]; }).filter(function (x) { return x[1]; });
+    var im = ls.map(function (x) { return '<img class="pn-logo" src="' + x[1] + '" alt="' + esc(x[0]) + ' 로고">'; }).join('');
+    return ls.length > 1 ? '<span class="pn-logos">' + im + '</span>' : im;
+  }
+  function isAvail(u) { return u.s.lease === 'operating' && u.s.sale !== 'sold'; } // 영업 중 (분양 가능)
+  function isOpSold(u) { return u.s.lease === 'operating' && u.s.sale === 'sold'; } // 영업 중 (분양 완료)
   function displayLabel(u) {
-    if (u.s.sale === 'sold' && u.s.lease === 'open') return '분양완료';
-    if (isAvail(u)) return AV.label;
+    if (u.s.lease === 'operating') return isAvail(u) ? AV.label : OS.label;
+    if (u.s.sale === 'sold' && u.s.lease === 'open') return SO.label;
     return leaseOf(u).label + (u.s.sale === 'available' ? ' · 분양 가능' : '');
   }
   function displayColor(u) {
-    if (u.s.sale === 'sold' && u.s.lease === 'open') return { color: '#9AA1B4', text: '#fff' };
-    if (isAvail(u)) return AV;
+    if (u.s.lease === 'operating') return isAvail(u) ? AV : OS;
+    if (u.s.sale === 'sold' && u.s.lease === 'open') return SO;
     return leaseOf(u);
   }
-  function rangeOf(nos) { return nos.length > 2 ? nos[0] + '~' + nos[nos.length - 1] + '호' : nos.join('·') + '호'; }
+  // 범례 — 김세연 님(11-06) 분류 순서. 0실이어도 분류는 늘 보여 줌
+  function legendHtml(openStyle) {
+    return [[OS.color, OS.label], [AV.color, AV.label], [LEASE.leased.color, LEASE.leased.label], [LEASE.loi.color, LOI_LONG], [SO.color, SO.label]]
+      .map(function (k) { return '<span><i style="background:' + k[0] + '"></i>' + k[1] + '</span>'; }).join('') + '<span><i style="background:#fff' + openStyle + '"></i>모집 중</span>';
+  }
+  // 면적표 현황 칸: 상태 · 브랜드. 브랜드 이름 중간에서는 줄이 안 바뀌고, 칸 폭은 CSS 로 상한
+  function cellStatusHtml(u) {
+    var bs = brandsOf(u);
+    return '<span class="cs"><b class="nb">' + esc(displayLabel(u)) + (bs.length ? ' ·' : '') + '</b>' + bs.map(function (b, i) { return ' <span class="nb">' + esc(b) + (i < bs.length - 1 ? ' ·' : '') + '</span>'; }).join('') + '</span>';
+  }
+  var IDX = {}; UNITS.forEach(function (u, i) { IDX[u.no] = i; });
+  // 호실 묶어 쓰기: 같은 동에서 붙어 있으면(한 칸 건너뛴 것까지) 101~109호, 떨어져 있으면 101, 111~113호
+  function rangeOf(nos) {
+    var runs = [];
+    nos.slice().sort(function (x, y) { return IDX[x] - IDX[y]; }).forEach(function (n) {
+      var r = runs[runs.length - 1], p = r && r[r.length - 1];
+      if (r && byNo[p].dong === byNo[n].dong && IDX[n] - IDX[p] <= 2) r.push(n); else runs.push([n]);
+    });
+    return runs.map(function (r) { return r.length > 2 ? r[0] + '~' + r[r.length - 1] : r.join('·'); }).join(', ') + '호';
+  }
   function counts() {
-    var c = { operating: 0, leased: 0, loi: 0, open: 0, sold: 0, soldOpen: 0, avail: 0 }, deal = { operating: {}, leased: {}, loi: {} };
+    var c = { operating: 0, leased: 0, loi: 0, open: 0, sold: 0, soldOpen: 0, avail: 0, opSold: 0 }, deal = { operating: {}, leased: {}, loi: {} };
     UNITS.forEach(function (u) {
       if (isAvail(u)) c.avail++;
+      if (isOpSold(u)) c.opSold++;
       if (u.s.sale === 'sold') c.sold++;
       if (u.s.sale === 'sold' && u.s.lease === 'open') c.soldOpen++;
-      else { c[u.s.lease]++; if (deal[u.s.lease]) deal[u.s.lease][String(u.s.brand || '').trim() || '#' + u.no] = 1; }
+      else { c[u.s.lease]++; if (deal[u.s.lease]) { var bs = brandsOf(u); (bs.length ? bs : ['#' + u.no]).forEach(function (b) { deal[u.s.lease][b] = 1; }); } }
     });
-    // LOI 는 호실 수가 아니라 건수(브랜드별 1건) — 팜프라자 8개 호실 = 1건
+    // LOI 는 호실 수가 아니라 건수(브랜드별 1건) — 팜프라자 8개 호실 = 1건, 한 호실에 두 브랜드면 각각 1건
     c.loiDeals = Object.keys(deal.loi).length;
     return c;
   }
@@ -75,7 +107,7 @@
   var live = $('[data-live-summary]');
   if (live) {
     live.innerHTML = [
-      ['operating', '영업 중', C.operating, '실'], ['leased', '임차 확정', C.leased, '실'], ['loi', 'LOI 접수', C.loiDeals, '건'], ['open', '모집 중', C.open + C.soldOpen, '실']
+      ['operating', '영업 중', C.operating, '실'], ['leased', LEASE.leased.label, C.leased, '실'], ['loi', LEASE.loi.label, C.loiDeals, '건'], ['open', '모집 중', C.open + C.soldOpen, '실']
     ].filter(function (x) { return x[2] > 0 || x[0] === 'open'; }).map(function (x) { var l = LEASE[x[0]]; return '<span class="chip"><i style="background:' + (x[0] === 'open' ? '#fff' : l.color) + '"></i>' + x[1] + ' <b><span data-count-to="' + x[2] + '">0</span>' + x[3] + '</b></span>'; }).join(' · ') +
       ' <a href="' + B + 'floorplan/">배치도에서 보기</a>';
   }
@@ -168,11 +200,11 @@
     var rows = [1, 2, 3].map(function (d) {
       return '<div class="cells-row"><span class="lbl">' + d + '동</span>' + UNITS.filter(function (u) { return u.dong === d; }).map(function (u, i) {
         var c = displayColor(u), open = u.s.lease === 'open' && u.s.sale !== 'sold';
-        return '<button class="cell' + (open ? ' open' : '') + '" style="background:' + (open ? '' : c.color) + ';transition-delay:' + (i * 40) + 'ms;flex-grow:' + u.ex + '" data-cell="' + u.no + '" title="' + u.no + '호 · ' + displayLabel(u) + (u.s.brand ? ' · ' + esc(u.s.brand) : '') + '">' + u.no + '</button>';
+        return '<button class="cell' + (open ? ' open' : '') + '" style="background:' + (open ? '' : c.color) + ';transition-delay:' + (i * 40) + 'ms;flex-grow:' + u.ex + '" data-cell="' + u.no + '" title="' + u.no + '호 · ' + displayLabel(u) + (brandText(u) ? ' · ' + esc(brandText(u)) : '') + '">' + u.no + '</button>';
       }).join('') + '</div>';
     }).join('');
     box.innerHTML = '<div><p class="eyebrow" style="margin:0">29개 호실 한눈에</p></div>' + rows +
-      '<div class="cells-legend"><span><i style="background:' + LEASE.operating.color + '"></i>영업 중</span>' + (C.avail ? '<span><i style="background:' + AV.color + '"></i>' + AV.label + '</span>' : '') + (C.leased ? '<span><i style="background:' + LEASE.leased.color + '"></i>임차 확정</span>' : '') + '<span><i style="background:' + LEASE.loi.color + '"></i>LOI 접수</span><span><i style="background:#9AA1B4"></i>분양완료</span><span><i style="background:#fff;border:1.5px dashed #C9D0E4"></i>모집 중</span></div>';
+      '<div class="cells-legend">' + legendHtml(';border:1.5px dashed #C9D0E4') + '</div>';
     box.addEventListener('click', function (e) {
       var b = e.target.closest('[data-cell]'); if (!b) return;
       var fp = $('[data-fp]');
@@ -181,31 +213,33 @@
     });
   });
   $$('[data-stats]').forEach(function (box) {
-    var brandsOf = function (f) { var o = []; UNITS.forEach(function (u) { if (f(u) && u.s.brand && o.indexOf(u.s.brand) < 0) o.push(u.s.brand); }); return o.join(' · '); };
-    var av = UNITS.filter(isAvail);
-    var rows = [['영업 중', C.operating, LEASE.operating.color, brandsOf(function (u) { return u.s.lease === 'operating'; })]];
-    if (C.avail) rows.push(['분양 가능', C.avail, AV.color, '영업 중인 매장 그대로 · ' + brandsOf(isAvail) + ' ' + rangeOf(av.map(function (u) { return u.no; }))]);
-    if (C.leased) rows.push(['임차 확정', C.leased, LEASE.leased.color, brandsOf(function (u) { return u.s.lease === 'leased'; })]);
-    rows.push(['LOI 접수', C.loiDeals, LEASE.loi.color, C.loi + '개 호실 · 입점의향서 단계 · 입점 확정 아님', '건']);
-    rows.push(['분양완료', C.sold, '#9AA1B4', UNITS.filter(function (u) { return u.s.sale === 'sold'; }).map(function (u) { return u.no; }).join(' · ') + '호']);
-    box.innerHTML = rows.map(function (s) { return '<div class="stat" style="--c:' + s[2] + '"><b><span data-count-to="' + s[1] + '">' + s[1] + '</span><small>' + (s[4] || '실') + '</small></b><span>' + s[0] + '</span><small class="d">' + s[3] + '</small></div>'; }).join('');
+    var names = function (f) { var o = []; UNITS.forEach(function (u) { if (f(u)) brandsOf(u).forEach(function (b) { if (o.indexOf(b) < 0) o.push(b); }); }); return esc(o.join(' · ')); };
+    var nos = function (f) { return UNITS.filter(f).map(function (u) { return u.no; }); };
+    var soldOpen = function (u) { return u.s.sale === 'sold' && u.s.lease === 'open'; };
+    var rows = [];
+    if (C.opSold) rows.push([OS.label, C.opSold, OS.color, names(isOpSold)]);
+    if (C.avail) rows.push([AV.label, C.avail, AV.color, names(isAvail) + ' ' + rangeOf(nos(isAvail)) + ' · <span class="nw">영업 중인 채로 분양</span>']);
+    if (C.leased) rows.push([LEASE.leased.label, C.leased, LEASE.leased.color, names(function (u) { return u.s.lease === 'leased'; })]);
+    rows.push([LOI_LONG, C.loiDeals, LEASE.loi.color, C.loi + '개 호실 · <span class="nw">입점 확정 아님</span>', '건']);
+    if (C.soldOpen) rows.push([SO.label, C.soldOpen, SO.color, nos(soldOpen).join(' · ') + '호 · <span class="nw">임차인 모집 중</span>']);
+    box.innerHTML = rows.map(function (s) { return '<div class="stat" style="--c:' + s[2] + '"><b><span data-count-to="' + s[1] + '">' + s[1] + '</span><small>' + (s[4] || '실') + '</small></b><span><span>' + s[0].replace(/ \(([^)]+)\)$/, ' <span class="nw">($1)</span>') + '</span></span><small class="d">' + s[3] + '</small></div>'; }).join('');
     if (io) io.observe(box);
   });
   replayOnHover('[data-stats] .stat, .mini-dist > div, .dist-card, .live-bar');
   $$('[data-brands]').forEach(function (box) {
     var seen = {}, list = [];
     UNITS.forEach(function (u) {
-      if (!u.s.brand || u.s.lease === 'open') return;
-      if (!seen[u.s.brand]) { seen[u.s.brand] = { brand: u.s.brand, units: [], lease: u.s.lease, note: u.s.note, av: isAvail(u) }; list.push(seen[u.s.brand]); }
-      seen[u.s.brand].units.push(u.no);
+      if (u.s.lease === 'open') return;
+      brandsOf(u).forEach(function (b) {
+        if (!seen[b]) { seen[b] = { brand: b, units: [], lease: u.s.lease, note: u.s.note, c: displayColor(u), label: displayLabel(u) }; list.push(seen[b]); }
+        seen[b].units.push(u.no);
+      });
     });
     var order = { operating: 0, leased: 1, loi: 2 };
     list.sort(function (a, b) { return order[a.lease] - order[b.lease]; });
     box.innerHTML = list.map(function (x) {
-      var l = x.av ? AV : LEASE[x.lease];
-      var range = rangeOf(x.units);
       var lg = logoOf(x.brand);
-      return '<div class="brand"><span class="bs" style="background:' + l.color + '">' + l.label + '</span><div class="blogo">' + (lg ? '<img src="' + lg + '" alt="' + esc(x.brand) + ' 로고" loading="lazy">' : '<b class="bn">' + esc(x.brand) + '</b>') + '</div><b class="bn2">' + esc(x.brand) + '</b><span class="bu">' + range + ' · ' + esc((x.note || '').split('·')[0]) + '</span></div>';
+      return '<div class="brand"><span class="bs" style="background:' + x.c.color + '">' + esc(x.label) + '</span><div class="blogo">' + (lg ? '<img src="' + lg + '" alt="' + esc(x.brand) + ' 로고" loading="lazy">' : '<b class="bn">' + esc(x.brand) + '</b>') + '</div><b class="bn2">' + esc(x.brand) + '</b><span class="bu">' + rangeOf(x.units) + ' · ' + esc((x.note || '').split('·')[0]) + '</span></div>';
     }).join('');
   });
 
@@ -222,10 +256,10 @@
     var lg = $('[data-legend]', fp);
     if (lg) lg.innerHTML = mode === 'zone'
       ? Object.keys(ZONES).map(function (k) { return '<span><i style="background:' + ZONES[k].color + '"></i>' + ZONES[k].label.replace(' zone', '') + '</span>'; }).join('')
-      : [['operating', LEASE.operating, 1], ['avail', AV, C.avail], ['leased', LEASE.leased, C.leased], ['loi', LEASE.loi, 1]].filter(function (k) { return k[2]; }).map(function (k) { var l = k[1]; return '<span><i style="background:' + l.color + '"></i>' + l.label + '</span>'; }).join('') + '<span><i style="background:#9AA1B4"></i>분양완료</span><span><i style="background:#fff"></i>모집 중</span>';
+      : legendHtml('');
     var ct = $('[data-count]', fp);
     if (ct) {
-      ct.innerHTML = [['영업 중', C.operating - C.avail, LEASE.operating.color], [AV.label, C.avail, AV.color], ['임차 확정', C.leased, LEASE.leased.color], ['LOI 접수', C.loiDeals, LEASE.loi.color, '건', C.loi + '개 호실'], ['분양완료(공실)', C.soldOpen, '#9AA1B4'], ['임차인 모집 중', C.open, '#fff']]
+      ct.innerHTML = [[OS.label, C.opSold, OS.color], [AV.label, C.avail, AV.color], [LEASE.leased.label, C.leased, LEASE.leased.color], [LEASE.loi.label, C.loiDeals, LEASE.loi.color, '건', C.loi + '개 호실'], [SO.label, C.soldOpen, SO.color], ['임차인 모집 중', C.open, '#fff']]
         .filter(function (r) { return r[1] > 0 || r[0] === '임차인 모집 중'; })
         .map(function (r) { return '<div' + (r[4] ? ' title="' + r[4] + '"' : '') + '><span><i style="background:' + r[2] + '"></i>' + r[0] + (r[4] ? ' <small>' + r[4] + '</small>' : '') + '</span><b><span data-count-to="' + r[1] + '">0</span>' + (r[3] || '실') + '</b></div>'; }).join('');
       if (fp.classList.contains('in')) $$('[data-count-to]', ct).forEach(function (el) { countUp(el, true); });
@@ -235,7 +269,7 @@
     var c = displayColor(u), z = u.zone ? ZONES[u.zone] : null;
     return '<div class="pn"><button class="pn-close" aria-label="닫기">✕</button>' +
       '<div class="pn-top"><span class="pn-no">' + u.no + '<small>호 · ' + u.dong + '동</small></span><span class="pn-st" style="background:' + c.color + ';color:' + c.text + (c.color === '#FFFFFF' ? ';border:1.5px solid #1F2761' : '') + '">' + displayLabel(u) + '</span></div>' +
-      (u.s.brand ? '<div class="pn-brand">' + (logoOf(u.s.brand) ? '<img class="pn-logo" src="' + logoOf(u.s.brand) + '" alt="' + esc(u.s.brand) + ' 로고">' : '') + '<b>' + esc(u.s.brand) + '</b><span>' + esc(u.s.note) + '</span>' + (u.s.lease === 'loi' ? '<em class="pn-loi">LOI는 입점 확정이 아닌 협의 단계입니다</em>' : '') + (isAvail(u) ? '<em class="pn-avail">매장이 영업 중인 채로 분양하는 호실입니다</em>' : '') + '</div>' : '<div class="pn-brand"><b>' + (u.s.sale === 'sold' ? '분양완료 호실' : '입점 브랜드 모집 중') + '</b><span>' + esc(u.s.note || (z ? z.md + ' 업종 추천' : '업종 제한 없이 상담')) + '</span></div>') +
+      (brandText(u) ? '<div class="pn-brand">' + logosHtml(u) + '<b>' + esc(brandText(u)) + '</b><span>' + esc(u.s.note) + '</span>' + (u.s.lease === 'loi' ? '<em class="pn-loi">LOI는 입점 확정이 아닌 협의 단계입니다</em>' : '') + (isAvail(u) ? '<em class="pn-avail">매장이 영업 중인 채로 분양하는 호실입니다</em>' : '') + '</div>' : '<div class="pn-brand"><b>' + (u.s.sale === 'sold' ? '분양 완료 호실' : '입점 브랜드 모집 중') + '</b><span>' + esc(u.s.note || (z ? z.md + ' 업종 추천' : '업종 제한 없이 상담')) + '</span></div>') +
       '<dl class="pn-dl"><div><dt>전용면적</dt><dd>' + u.ex.toFixed(2) + '㎡ <small>' + u.exP.toFixed(2) + '평</small></dd></div><div><dt>계약면적</dt><dd>' + u.ct.toFixed(2) + '㎡ <small>' + u.ctP.toFixed(2) + '평</small></dd></div>' +
       '<div><dt>분양</dt><dd>' + (A.sale[u.s.sale] || '분양 예정') + '</dd></div><div><dt>임차</dt><dd>' + leaseOf(u).label + '</dd></div></dl>' +
       (z ? '<p class="pn-zone"><i style="background:' + z.color + '"></i><span><b>' + z.label + '</b> · ' + esc(z.where) + '<br>' + esc(z.md) + '</span></p>' : '') +
@@ -256,7 +290,7 @@
     if (!tip) { tip = document.createElement('div'); tip.className = 'fp-tip'; document.body.appendChild(tip); }
     var c = displayColor(u);
     tip.innerHTML = '<b>' + u.no + '호</b><span class="t-st" style="background:' + c.color + ';color:' + c.text + (c.color === '#FFFFFF' ? ';border:1px solid #1F2761' : '') + '">' + displayLabel(u) + '</span>' +
-      (u.s.brand ? '<span class="t-br">' + esc(u.s.brand) + '</span>' : '') +
+      (brandText(u) ? '<span class="t-br">' + esc(brandText(u)) + '</span>' : '') +
       '<span class="t-m">전용 ' + u.exP.toFixed(2) + '평 · 계약 ' + u.ctP.toFixed(2) + '평</span>' +
       (u.zone ? '<span class="t-m">' + ZONES[u.zone].label + '</span>' : '');
     tip.hidden = false;
@@ -381,7 +415,9 @@
       }, { passive: false });
       stage.addEventListener('touchend', function (e) { if (e.touches.length < 2) pin = null; }, { passive: true });
       stage.addEventListener('wheel', function (e) { if (!e.ctrlKey) return; e.preventDefault(); setW(svgW() * Math.exp(-e.deltaY / 300), e.clientX, e.clientY); }, { passive: false });
-      addEventListener('resize', function () { if (fp.classList.contains('zoomed')) { svg.style.width = svg.style.minWidth = stage.style.height = ''; H0 = 0; fp.classList.remove('zoomed'); } zoomBtns(); });
+      // 가로 폭이 바뀔 때만 확대를 처음으로 — 휴대폰은 스크롤하면 주소창이 숨으며 높이만 바뀌는데, 그때 풀리면 안 됨
+      var lastVW = innerWidth;
+      addEventListener('resize', function () { if (innerWidth === lastVW) return; lastVW = innerWidth; if (fp.classList.contains('zoomed')) { svg.style.width = svg.style.minWidth = stage.style.height = ''; H0 = 0; fp.classList.remove('zoomed'); } zoomBtns(); });
       zoomBtns();
     }
     function goDong(d) {
@@ -399,11 +435,11 @@
   });
 
   // 면적표 현황 칸 갱신 + 동 필터
-  $$('[data-unit-status]').forEach(function (td) { var u = byNo[td.getAttribute('data-unit-status')]; if (!u) return; td.textContent = displayLabel(u) + (u.s.brand ? ' · ' + u.s.brand + (u.s.lease === 'loi' ? ' (입점의향서 접수 — 입점 확정 아님)' : '') : ''); });
+  $$('[data-unit-status]').forEach(function (td) { var u = byNo[td.getAttribute('data-unit-status')]; if (!u) return; td.textContent = displayLabel(u) + (brandText(u) ? ' · ' + brandText(u) + (u.s.lease === 'loi' ? ' (입점의향서 접수 — 입점 확정 아님)' : '') : ''); });
   $$('[data-row]').forEach(function (tr) {
     var u = byNo[tr.getAttribute('data-row')]; if (!u) return;
     var td = $('[data-cell-status]', tr);
-    if (td) td.textContent = u.s.sale === 'sold' ? '분양완료' + (u.s.lease === 'operating' ? ' · ' + u.s.brand + ' 영업 중' : '') : displayLabel(u) + (u.s.brand ? ' · ' + u.s.brand : '');
+    if (td) td.innerHTML = cellStatusHtml(u);
     tr.classList.toggle('sold', u.s.sale === 'sold');
   });
   $$('[data-tbl-filter]').forEach(function (bar) {

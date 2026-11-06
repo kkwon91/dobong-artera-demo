@@ -106,12 +106,21 @@
   }
 
   function stateOf(no) { return Object.assign({ sale: 'selling', lease: 'open', brand: '', note: '' }, A.stateSeed[no] || {}, (db.state || {})[no] || {}); }
-  var AV = A.avail || { label: '영업 중 · 분양 가능', color: '#6B4FD8', text: '#fff' };
-  function colorOf(s) { if (s.sale === 'sold' && s.lease === 'open') return { color: '#9AA1B4', text: '#fff', label: '분양완료' }; if (s.lease === 'operating' && s.sale === 'available') return { color: AV.color, text: AV.text, label: AV.label }; var l = LEASE[s.lease]; return { color: l.color, text: l.text, label: l.label }; }
+  var AV = A.avail || { label: '영업 중 (분양 가능)', color: '#6B4FD8', text: '#fff' };
+  var OS = A.opsold || { label: '영업 중 (분양 완료)', color: '#1E2A6E', text: '#fff' };
+  var SO = A.soldopen || { label: '분양 완료', color: '#9AA1B4', text: '#fff' };
+  function brands(b) { return String(b || '').split(/\s*[,+\/·，]\s*/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function colorOf(s) { var l = s.lease === 'operating' ? (s.sale === 'sold' ? OS : AV) : s.sale === 'sold' && s.lease === 'open' ? SO : LEASE[s.lease]; return { color: l.color, text: l.text, label: l.label }; }
   function counts() {
-    var c = { operating: 0, leased: 0, loi: 0, open: 0, soldOpen: 0, sold: 0 };
+    var c = { operating: 0, leased: 0, loi: 0, open: 0, soldOpen: 0, sold: 0, opSold: 0, avail: 0 };
     var loi = {};
-    A.units.forEach(function (u) { var s = stateOf(u.no); if (s.sale === 'sold') c.sold++; if (s.sale === 'sold' && s.lease === 'open') c.soldOpen++; else { c[s.lease]++; if (s.lease === 'loi') loi[String(s.brand || '').trim() || '#' + u.no] = 1; } });
+    A.units.forEach(function (u) {
+      var s = stateOf(u.no);
+      if (s.lease === 'operating') c[s.sale === 'sold' ? 'opSold' : 'avail']++;
+      if (s.sale === 'sold') c.sold++;
+      if (s.sale === 'sold' && s.lease === 'open') c.soldOpen++;
+      else { c[s.lease]++; if (s.lease === 'loi') { var bs = brands(s.brand); (bs.length ? bs : ['#' + u.no]).forEach(function (b) { loi[b] = 1; }); } }
+    });
     c.loiDeals = Object.keys(loi).length; // LOI 는 건수(브랜드별 1건)
     return c;
   }
@@ -154,7 +163,7 @@
         var cx = p.reduce(function (a, b) { return a + b[0]; }, 0) / p.length, cy = p.reduce(function (a, b) { return a + b[1]; }, 0) / p.length;
         return '<g class="u' + (sel === u.no ? ' on' : '') + '" data-no="' + u.no + '" style="--f:' + c.color + ';--t:' + (c.color === '#FFFFFF' ? '#1F2761' : '#fff') + '"><polygon points="' + u.poly + '"/><text x="' + cx.toFixed(0) + '" y="' + (cy + 6).toFixed(0) + '">' + u.no + '</text></g>';
       }).join('') + '</svg></div>' +
-      '<div class="legend"><span><i style="background:' + LEASE.operating.color + '"></i>영업 중</span><span><i style="background:' + AV.color + '"></i>' + AV.label + '</span><span><i style="background:' + LEASE.leased.color + '"></i>임차 확정</span><span><i style="background:' + LEASE.loi.color + '"></i>LOI 접수</span><span><i style="background:#9AA1B4"></i>분양완료(공실)</span><span><i style="background:#fff"></i>모집 중</span></div>';
+      '<div class="legend">' + [[OS.color, OS.label], [AV.color, AV.label], [LEASE.leased.color, LEASE.leased.label], [LEASE.loi.color, LEASE.loi.long || LEASE.loi.label], [SO.color, SO.label], ['#fff', '모집 중']].map(function (k) { return '<span><i style="background:' + k[0] + '"></i>' + k[1] + '</span>'; }).join('') + '</div>';
   }
 
   var VIEWS = {};
@@ -163,7 +172,7 @@
     var c = counts(), q = inquiries(), filled = c.operating + c.leased + c.loi;
     var lg = (db.log || []).slice(0, 8);
     v.innerHTML =
-      '<div class="kpis">' + [['영업 중', c.operating, LEASE.operating.color], ['임차 확정', c.leased, LEASE.leased.color], ['LOI 접수', c.loiDeals, LEASE.loi.color, '건', c.loi + '개 호실'], ['분양완료', c.sold, '#9AA1B4'], ['임차인 모집 중', c.open + c.soldOpen, '#C9D0E4']].map(function (k) { return '<div class="kpi" style="--c:' + k[2] + '"><b>' + k[1] + '<small style="font-size:15px">' + (k[3] || '실') + '</small></b><span>' + k[0] + (k[4] ? ' <small class="muted">' + k[4] + '</small>' : '') + '</span></div>'; }).join('') + '</div>' +
+      '<div class="kpis">' + [[OS.label, c.opSold, OS.color], [AV.label, c.avail, AV.color], [LEASE.leased.label, c.leased, LEASE.leased.color], [LEASE.loi.label, c.loiDeals, LEASE.loi.color, '건', c.loi + '개 호실'], [SO.label, c.soldOpen, SO.color], ['임차인 모집 중', c.open, '#C9D0E4']].map(function (k) { return '<div class="kpi" style="--c:' + k[2] + '"><b>' + k[1] + '<small style="font-size:15px">' + (k[3] || '실') + '</small></b><span>' + k[0] + (k[4] ? ' <small class="muted">' + k[4] + '</small>' : '') + '</span></div>'; }).join('') + '</div>' +
       '<div class="grid2"><div class="card"><div class="row between"><div><h2>호실 현황 한눈에</h2><p class="d">임차 진행률 ' + Math.round(filled / 29 * 100) + '% (29실 중 ' + filled + '실 브랜드 확보). 호실을 누르면 바로 고칠 수 있습니다.</p></div><a class="btn btn-n btn-sm" href="#units">호실 관리 →</a></div>' +
       '<div class="bar-h" style="margin-bottom:14px"><i style="width:' + (c.operating / 29 * 100) + '%;background:' + LEASE.operating.color + '"></i><i style="width:' + (c.leased / 29 * 100) + '%;background:' + LEASE.leased.color + '"></i><i style="width:' + (c.loi / 29 * 100) + '%;background:' + LEASE.loi.color + '"></i><i style="width:' + (c.soldOpen / 29 * 100) + '%;background:#9AA1B4"></i></div>' + miniMap() + '</div>' +
       '<div style="display:grid;gap:18px;align-content:start"><div class="card"><div class="row between"><h2>새 문의</h2><a class="btn btn-line btn-sm" href="#inq">전체 →</a></div><p class="d">신규 ' + q.filter(function (x) { return x.status === '신규'; }).length + '건 · 전체 ' + q.length + '건</p>' +
@@ -193,10 +202,10 @@
       var u = A.units.filter(function (x) { return x.no === no; })[0], box = $('[data-editor]', v);
       if (!u) { box.innerHTML = '<p class="d">↑ 배치도에서 호실을 누르면 여기서 바로 고칠 수 있습니다.</p>'; return; }
       var s = stateOf(no), c = colorOf(s);
-      box.innerHTML = '<div class="editor"><div class="row between"><h3>' + (s.brand && logoUrl(s.brand) ? '<img class="ed-logo" src="' + logoUrl(s.brand) + '" alt="">' : '') + no + '호 <small style="font-size:14px;color:#5A6178">' + u.dong + '동 · 전용 ' + u.ex + '㎡(' + u.exP + '평) · 계약 ' + u.ct + '㎡(' + u.ctP + '평)' + (u.zone ? ' · ' + ZONES[u.zone].label : '') + '</small></h3><span class="pill" style="background:' + c.color + ';color:' + (c.color === '#FFFFFF' ? '#1F2761;border:1px solid #1F2761' : '#fff') + '">' + c.label + '</span></div>' +
+      box.innerHTML = '<div class="editor"><div class="row between"><h3>' + (logoUrl(brands(s.brand)[0]) ? '<img class="ed-logo" src="' + logoUrl(brands(s.brand)[0]) + '" alt="">' : '') + no + '호 <small style="font-size:14px;color:#5A6178">' + u.dong + '동 · 전용 ' + u.ex + '㎡(' + u.exP + '평) · 계약 ' + u.ct + '㎡(' + u.ctP + '평)' + (u.zone ? ' · ' + ZONES[u.zone].label : '') + '</small></h3><span class="pill" style="background:' + c.color + ';color:' + (c.color === '#FFFFFF' ? '#1F2761;border:1px solid #1F2761' : '#fff') + '">' + c.label + '</span></div>' +
         '<div class="fgrid"><label class="f">분양 상태<select data-e="sale">' + Object.keys(SALE).map(function (k) { return '<option value="' + k + '"' + (s.sale === k ? ' selected' : '') + '>' + SALE[k] + '</option>'; }).join('') + '</select></label>' +
         '<label class="f">임차 상태<select data-e="lease">' + Object.keys(LEASE).map(function (k) { return '<option value="' + k + '"' + (s.lease === k ? ' selected' : '') + '>' + LEASE[k].label + '</option>'; }).join('') + '</select></label>' +
-        '<label class="f">입점(예정) 브랜드<input data-e="brand" value="' + esc(s.brand) + '" placeholder="예) 팜프라자"></label>' +
+        '<label class="f">입점(예정) 브랜드<input data-e="brand" value="' + esc(s.brand) + '" placeholder="예) 팜프라자, 투썸플레이스 (여러 곳은 쉼표로)"></label>' +
         '<label class="f">한 줄 설명<input data-e="note" value="' + esc(s.note) + '" placeholder="예) 창고형 약국 · 출점 확정"></label></div>' +
         '<div class="row" style="margin-top:12px"><button class="btn btn-o btn-sm" data-pop>이 소식으로 메인 팝업 띄우기</button><button class="btn btn-line btn-sm" data-newsdraft>소식 글 초안 만들기</button><span class="d" style="margin:0">값을 바꾸면 바로 저장됩니다.</span></div></div>';
       $$('[data-e]', box).forEach(function (el) { el.addEventListener('change', function () { var val = el.value; setTimeout(function () { setState(no, el.dataset.e, val); editor(no); }, 0); }); });

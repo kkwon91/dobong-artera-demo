@@ -699,7 +699,7 @@ main p em,main li em,main td em,main dd em,.article em{font-style:normal;color:v
 .brand{min-width:0}
 .brand .bn2{display:block;font-size:14px;font-weight:800}
 .pn-logo{max-height:34px;max-width:min(150px,100%);object-fit:contain;display:block;margin-bottom:8px;background:#fff;padding:4px 6px;border-radius:2px}
-.pn-loi{display:block;font-style:normal;font-size:12px;color:#9A5B00;background:#FFF0D6;padding:4px 8px;border-radius:2px;margin-top:8px}
+.pn-loi{display:block;font-style:normal;font-size:12px;color:#0B5E86;background:rgba(54,169,225,.12);padding:4px 8px;border-radius:2px;margin-top:8px}
 .loi-note{text-align:center;margin-top:18px}
 .bf p small{display:block;font-size:11.5px;color:var(--sub);font-weight:600;margin-top:2px}
 .formula-t{margin-top:14px;font-weight:700;color:var(--navy);background:var(--sky-lt);border-left:3px solid var(--navy);padding:10px 14px;font-size:14.5px}
@@ -1016,3 +1016,13 @@ picture{display:contents}
 .fp-zoom button:last-child{border-right:0;font-size:13px}
 .fp-zoom button:disabled{color:#C3C8D4;cursor:default}
 .fp-zoom button:not(:disabled):hover{background:var(--gray)}
+
+/* 11-06 김세연 님: 현황 칸에 브랜드가 여럿(101호 팜프라자 · 투썸 · …)이어도 표 폭 안에서 알아서 맞춤 — 자리가 남으면 한 줄, 모자라면 브랜드 단위로 줄 바꿈 */
+.area [data-cell-status]{text-align:left}
+.area .cs{display:block;white-space:normal;min-width:16em;line-height:1.5;word-break:keep-all}
+.area .cs .nb{white-space:nowrap}
+.area .cs span.nb{font-weight:600}
+.pn-logos{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.pn-logos .pn-logo{margin:0;max-width:110px;max-height:30px}
+/* 숫자 상자: "(분양 완료)"·"임차인 모집 중"처럼 붙어 다녀야 하는 말은 중간에서 줄 바꿈 안 함 */
+.stat .nw{white-space:nowrap}
