@@ -108,9 +108,13 @@
   if (live) {
     live.innerHTML = [
       ['operating', '영업 중', C.operating, '실'], ['leased', LEASE.leased.label, C.leased, '실'], ['loi', LEASE.loi.label, C.loiDeals, '건'], ['open', '모집 중', C.open + C.soldOpen, '실']
-    ].filter(function (x) { return x[2] > 0 || x[0] === 'open'; }).map(function (x) { var l = LEASE[x[0]]; return '<span class="chip"><i style="background:' + (x[0] === 'open' ? '#fff' : l.color) + '"></i>' + x[1] + ' <b><span data-count-to="' + x[2] + '">0</span>' + x[3] + '</b></span>'; }).join(' · ') +
-      ' <a href="' + B + 'floorplan/">배치도에서 보기</a>';
+    ].filter(function (x) { return x[2] > 0 || x[0] === 'open'; }).map(function (x) { var l = LEASE[x[0]]; return '<span class="chip"><i style="background:' + (x[0] === 'open' ? '#fff' : l.color) + '"></i>' + x[1] + ' <b><span data-count-to="' + x[2] + '">0</span>' + x[3] + '</b></span>'; }).join(' · ');
   }
+  // 휴대폰은 LIVE 띠가 두 줄(11-06) — 실제 높이를 --live 로 넘겨 아래 내용이 가려지지 않게
+  var liveBar = $('.live-bar');
+  function fitLive() { if (!liveBar) return; var r = document.documentElement.style; r.removeProperty('--live'); r.setProperty('--live', liveBar.offsetHeight + 'px'); }
+  fitLive(); addEventListener('resize', fitLive); addEventListener('load', fitLive);
+  if (liveBar && 'ResizeObserver' in window) new ResizeObserver(function () { var h = liveBar.offsetHeight + 'px'; if (getComputedStyle(document.documentElement).getPropertyValue('--live').trim() !== h) fitLive(); }).observe(liveBar);
 
   // ── 사업 정보 (관리자에서 수정)
   if (cms.site && cms.site.owners) {
@@ -226,6 +230,23 @@
     if (io) io.observe(box);
   });
   replayOnHover('[data-stats] .stat, .mini-dist > div, .dist-card, .live-bar');
+  // 11-06 LIVE 띠 숫자 자동 반짝임: 영업 중 → LOI 접수 완료 → 모집 중 순서로 하나씩 다시 세며 강조(초록 점처럼 계속)
+  (function () {
+    var chips = $$('[data-live-summary] .chip'); if (!chips.length || REDUCE) return;
+    chips.forEach(function (c) { var n = $('[data-count-to]', c); if (n) n.style.minWidth = String(n.getAttribute('data-count-to')).length + 'ch'; });
+    var i = 0, hover = false;
+    liveBar.addEventListener('mouseenter', function () { hover = true; });
+    liveBar.addEventListener('mouseleave', function () { hover = false; });
+    function step() {
+      if (!document.hidden && !hover) {
+        var c = chips[i % chips.length], n = $('[data-count-to]', c); i++;
+        chips.forEach(function (x) { x.classList.toggle('glow', false); }); void c.offsetWidth; c.classList.toggle('glow', true);
+        if (n) { n.setAttribute('data-dur', '900'); countUp(n, true); }
+      }
+      setTimeout(step, 2600);
+    }
+    setTimeout(step, 2600);
+  })();
   $$('[data-brands]').forEach(function (box) {
     var seen = {}, list = [];
     UNITS.forEach(function (u) {
@@ -447,6 +468,11 @@
     $$('button', bar).forEach(function (b) { b.addEventListener('click', function () {
       $$('button', bar).forEach(function (x) { x.classList.toggle('on', x === b); });
       $$('tbody tr', tbl).forEach(function (tr) { tr.hidden = b.dataset.dong !== 'all' && tr.dataset.dong !== b.dataset.dong; });
+      // 11-06 합계 줄도 고른 동 합계로
+      var foot = $('tfoot', tbl), sums = null;
+      try { sums = JSON.parse(foot.getAttribute('data-sums')); } catch (e) {}
+      var v = sums && sums[b.dataset.dong];
+      if (v) { var cells = $$('tr > *', foot); for (var k = 0; k < 6 && k < cells.length; k++) cells[k].textContent = v[k]; }
     }); });
   });
 

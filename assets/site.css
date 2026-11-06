@@ -102,7 +102,26 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
 @keyframes ping{0%{box-shadow:0 0 0 0 rgba(59,224,122,.7)}70%{box-shadow:0 0 0 10px rgba(59,224,122,0)}100%{box-shadow:0 0 0 0 rgba(59,224,122,0)}}
 .live-track .chip{display:inline-flex;align-items:center;gap:6px}
 .live-track .chip i{width:9px;height:9px;border-radius:3px;display:inline-block}
+/* 11-06 숫자 자동 반짝임(순서대로) */
+.live-track .chip{padding:1px 5px;margin:0 -3px;border-radius:3px}
+.live-track .chip i{box-shadow:0 0 0 1px rgba(255,255,255,.55)} /* 남색 띠 위 '영업 중' 남색 네모가 안 보여서 */
+.live-track .chip b span{display:inline-block;text-align:right;font-variant-numeric:tabular-nums}
+.live-track .chip.glow{animation:chipGlow 1.6s ease}
+.live-track .chip.glow i{animation:chipDot 1.6s ease}
+@keyframes chipGlow{0%{background:rgba(255,255,255,0)}25%{background:rgba(255,255,255,.18)}100%{background:rgba(255,255,255,0)}}
+@keyframes chipDot{0%{transform:scale(1)}25%{transform:scale(1.45)}60%{transform:scale(1)}}
 .live-track a{text-decoration:underline;text-underline-offset:3px;color:#fff;opacity:.85}
+/* 11-06 휴대폰: 한 줄이면 잘려서 두 줄 — 1줄 LIVE 입점 현황 + 배치도에서 보기, 2줄 숫자(좁으면 3줄까지 자연스럽게) */
+@media(max-width:600px){
+  :root{--live:54px}
+  .live-bar{height:auto;font-size:12.5px;padding:7px 0}
+  .live-track{display:grid;grid-template-columns:auto 1fr auto;column-gap:8px;row-gap:3px;white-space:normal;width:calc(100% - 28px)}
+  .live-dot{grid-column:1;grid-row:1}
+  .live-track>b{grid-column:2;grid-row:1}
+  .live-more{grid-column:3;grid-row:1;font-size:12px}
+  [data-live-summary]{grid-column:1/-1;grid-row:2;line-height:1.45;letter-spacing:-.01em}
+  [data-live-summary] .chip{white-space:nowrap}
+}
 
 .mnav{position:fixed;inset:calc(var(--hd) + var(--live)) 0 0;background:#fff;z-index:99;transform:translateX(100%);transition:transform .35s var(--ease);overflow:auto}
 .mnav.open{transform:none}
@@ -433,10 +452,10 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
 .ov-img figcaption{font-size:12px;color:#8a90a3;padding:10px 14px;background:#fff}
 .dong-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .dong-card{background:#fff;border-radius:var(--r);padding:22px;box-shadow:var(--sh)}
-.dong-card span{font-weight:800;color:var(--sub)}
+.dong-card>span{font-weight:800;color:var(--sub)} /* 11-06 숫자(b 안 span)까지 회색 되던 것: 바로 아래 칸 이름만 */
 .dong-card b{display:block;font-size:40px;font-weight:900;letter-spacing:-.03em;margin:4px 0}
 .dong-card small{color:var(--sub);font-size:13px}
-.dong-card.total{background:var(--navy);color:#fff}.dong-card.total span,.dong-card.total small{color:rgba(255,255,255,.8)}
+.dong-card.total{background:var(--navy);color:#fff}.dong-card.total>span,.dong-card.total small{color:rgba(255,255,255,.8)}
 
 /* 오시는 길 */
 .way{display:grid;grid-template-columns:1.2fr 1fr;gap:40px}
