@@ -322,7 +322,7 @@
       A.aeoQueries.map(function (q) { return '<tr><td><b>' + esc(q[0]) + '</b></td><td>' + esc(q[1] === 'index' ? '메인' : q[1]) + '</td><td>' + esc(q[2]) + '</td><td><a class="btn btn-line btn-sm" target="_blank" href="../' + (q[1] === 'index' ? '' : q[1]) + '">열기 ↗</a></td></tr>'; }).join('') + '</tbody></table></div>' +
       '<div class="card"><h2>페이지별 점검</h2><table><thead><tr><th>페이지</th><th>FAQ</th><th>구조화 데이터</th><th>표·숫자 글자화</th><th>설명문</th></tr></thead><tbody>' +
       pages.map(function (p) { return '<tr><td><b>' + p[0] + '</b></td><td class="ok">' + (A.faqCount[p[2]] || 0) + '개</td><td>' + ld[p[2]] + '</td><td class="ok">✓</td><td class="ok">✓</td></tr>'; }).join('') + '</tbody></table>' +
-      '<p class="d" style="margin-top:12px"><a class="btn btn-n btn-sm" href="../compliance/" target="_blank">광고 컴플라이언스 점검 보고 ↗</a></p><p class="d" style="margin-top:12px">정식 오픈 체크: ① noindex·robots 차단 해제 ② 네이버 서치어드바이저·구글 서치콘솔 등록, sitemap.xml 제출 ③ GA4·메타 픽셀 연결(폼 전환 이벤트) ④ 보도자료 게재 때마다 소식 글 + NewsArticle 자동 생성</p></div>';
+      '<p class="d" style="margin-top:12px"><a class="btn btn-n btn-sm" href="../compliance/" target="_blank">광고 컴플라이언스 점검 보고 ↗</a></p><p class="d" style="margin-top:12px">정식 오픈 체크: ① 검색 노출 허용(11-06 완료, dbartera.com) ② 네이버 서치어드바이저·구글 서치콘솔 등록, sitemap.xml 제출 ③ GA4·메타 픽셀 연결(폼 전환 이벤트) ④ 보도자료 게재 때마다 소식 글 + NewsArticle 자동 생성</p></div>';
   };
 
 

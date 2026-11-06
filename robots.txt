@@ -1,3 +1,7 @@
-# 시안 단계: 검색 노출 차단
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /admin/
+Disallow: /plan/
+Disallow: /compliance/
+
+Sitemap: https://dbartera.com/sitemap.xml
