@@ -617,6 +617,13 @@
       var v = $('b', b); if (!v) return;
       v.innerHTML = '<span data-count-to="' + v.textContent.replace(/[^\d.]/g, '') + '" data-delay="' + (i * 220) + '" data-dur="1100">0</span>';
     });
+    // 11-06 막대 꼭대기 높이 점선(범위 표시): 막대 안에 두고 그래프 폭만큼 왼쪽으로 늘림
+    var lvls = bars.map(function (b) { var l = document.createElement('i'); l.className = 'lvl'; l.setAttribute('aria-hidden', 'true'); b.appendChild(l); return l; });
+    function placeLvls() {
+      var pad = parseFloat(getComputedStyle(box).paddingLeft) || 0;
+      bars.forEach(function (b, i) { lvls[i].style.left = (pad - b.offsetLeft) + 'px'; lvls[i].style.width = (box.clientWidth - pad * 2) + 'px'; });
+    }
+    placeLvls(); addEventListener('resize', placeLvls); addEventListener('load', placeLvls);
     function play() {
       last = Date.now();
       box.classList.add('reset'); box.classList.remove('go'); void box.offsetWidth;
@@ -629,6 +636,46 @@
     } else play();
     box.addEventListener('mouseenter', function () { if (Date.now() - last > 2500) play(); });
   });
+
+  // ── 11-06 MD 구역 카드에 마우스(휴대폰은 누름) → 카드 바로 위 작은 배치도와 큰 배치도에서 그 구역 호실이 구역 색으로 반짝
+  (function () {
+    var fpBox = $('.fp'), cards = $$('[data-zone-card]'), mini = $('[data-md-mini]');
+    if (!fpBox || !cards.length) return;
+    // 작은 배치도: 큰 배치도 그림을 복사(걷는 점·id 겹침 빼고), 호실은 MD 구역 색
+    if (mini) {
+      var src = $('.fp-svg', fpBox), svg = src && src.cloneNode(true);
+      if (svg) {
+        $$('defs, .walkers', svg).forEach(function (x) { x.parentNode.removeChild(x); });
+        var im = $('.fp-img', svg); if (im && im.getAttribute('data-href')) { im.setAttribute('href', im.getAttribute('data-href')); im.removeAttribute('data-href'); }
+        svg.removeAttribute('aria-label'); svg.setAttribute('class', 'md-mini-svg');
+        $$('.u', svg).forEach(function (g) {
+          var u = UNITS[IDX[g.getAttribute('data-no')]], z = u && u.zone && ZONES[u.zone];
+          g.removeAttribute('tabindex'); g.classList.remove('on', 'dim');
+          g.style.setProperty('--f', z ? z.color : '#C9CDD8'); g.style.setProperty('--t', z ? '#fff' : '#1F2761');
+        });
+        mini.appendChild(svg);
+      }
+    }
+    var roots = [fpBox].concat(mini ? [mini] : []), timer = 0;
+    function spot(k) {
+      clearTimeout(timer);
+      roots.forEach(function (root) {
+        root.classList.toggle('spotting', !!k);
+        $$('.u', root).forEach(function (g) {
+          var u = UNITS[IDX[g.getAttribute('data-no')]], hit = !!(k && u && u.zone === k);
+          g.classList.toggle('spot', hit);
+          if (hit) g.style.setProperty('--zc', ZONES[k].color);
+        });
+      });
+      cards.forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-zone-card') === k); });
+    }
+    cards.forEach(function (c) {
+      var k = c.getAttribute('data-zone-card');
+      c.addEventListener('mouseenter', function () { spot(k); });
+      c.addEventListener('mouseleave', function () { spot(null); });
+      c.addEventListener('click', function () { spot(k); timer = setTimeout(function () { spot(null); }, 4500); });
+    });
+  })();
 
   // ── 문의 폼 (시안: 브라우저에 저장 → 관리자 '문의 접수'에서 확인)
   var params = new URLSearchParams(location.search);
