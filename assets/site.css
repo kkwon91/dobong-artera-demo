@@ -67,11 +67,14 @@ input,select,textarea{font:inherit;color:inherit}
 body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12px);box-shadow:0 1px 0 var(--line);color:var(--ink)}
 .is-home .hd:not(.solid){background:linear-gradient(180deg,rgba(10,14,40,.55),rgba(10,14,40,0))}
 .logo{display:flex;align-items:center;gap:10px;color:inherit}
-.logo-mark{width:34px;height:22px;color:var(--navy)}
-.is-home .hd:not(.solid) .logo-mark{color:#fff}
+/* 11-06 공식 BI(기존 사이트 dobong_logo.png 조각, 남색 #232A5C) — 마스크로 색만 바꿈 */
+.logo{--bi:#232A5C}
+.logo-sym{display:block;flex:none;width:39px;height:28px;color:var(--bi);background:currentColor;-webkit-mask:url(img/bi/symbol.png) center/contain no-repeat;mask:url(img/bi/symbol.png) center/contain no-repeat}
+.logo-word{display:block;width:112px;height:15.6px;color:var(--bi);background:currentColor;-webkit-mask:url(img/bi/word.png) center/contain no-repeat;mask:url(img/bi/word.png) center/contain no-repeat}
+.is-home .hd:not(.solid) .logo-sym,.is-home .hd:not(.solid) .logo-word{color:#fff}
 .logo-t{display:flex;flex-direction:column;line-height:1.05}
 .logo-t b{font-size:21px;letter-spacing:.08em;font-weight:900}
-.logo-t small{font-size:11px;color:var(--sub);font-weight:600;margin-top:3px}
+.logo-t small{font-size:11px;color:var(--bi);font-weight:700;margin-top:5px;letter-spacing:-.01em}
 .gnb{margin-left:auto}
 .gnb ul{display:flex;list-style:none;gap:4px}
 .nav-li{position:relative}
@@ -315,6 +318,8 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
 .dist-card .dist-k{top:auto;bottom:calc(100% - 46px)}
 .demand-strip{margin-top:26px;display:flex;align-items:center;gap:34px;background:var(--navy);color:#fff;border-radius:var(--r);padding:28px 34px;overflow:hidden;position:relative}
 .demand-strip::after{content:"";position:absolute;right:-60px;top:-60px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(124,200,236,.35),transparent 70%)}
+.ds-big{flex:none;white-space:nowrap}
+[data-count-to]{white-space:nowrap}
 .ds-big b{font-size:64px;font-weight:900;letter-spacing:-.04em;line-height:1;color:var(--orange-2)}
 .ds-big span{font-size:22px;font-weight:800;margin-left:4px}
 .ds-txt p{opacity:.92}.ds-txt b{color:var(--sky)}
@@ -453,8 +458,8 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
 .callout .tag-o{background:rgba(255,255,255,.15);color:#fff}
 
 /* 프리미엄 */
-.p-num{display:inline-block;font-size:56px;font-weight:900;line-height:1;color:transparent;-webkit-text-stroke:2px var(--orange);margin-bottom:10px}
-.p-num.light{-webkit-text-stroke-color:var(--orange-2)}
+.p-num{display:inline-block;font-size:56px;font-weight:900;line-height:1;color:var(--orange);margin-bottom:10px;letter-spacing:-.02em} /* 11-06 테두리 글자→채운 글자(밝은 바탕에서 안 보인다는 지적) */
+.p-num.light{color:var(--orange-2)}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
 .mini-dist{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .mini-dist div{background:var(--gray);border-radius:var(--r);padding:22px;transition:.3s}
@@ -527,7 +532,7 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
 .steps{list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .step{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:24px;position:relative;transition:.3s}
 .step:hover{box-shadow:var(--sh);transform:translateY(-4px)}
-.step-n{font-size:34px;font-weight:900;color:transparent;-webkit-text-stroke:1.5px var(--navy-2)}
+.step-n{font-size:34px;font-weight:900;color:var(--navy-2);letter-spacing:-.02em} /* 11-06 테두리 글자는 '4'처럼 획이 겹친 글자에서 안쪽 선이 비쳐 채운 글자로 */
 .step time{display:block;font-weight:800;color:var(--orange);margin:6px 0 4px}
 .step h3{font-size:18px;margin-bottom:6px}.step p{color:var(--sub);font-size:14.5px}
 .step-now{border-color:var(--orange);box-shadow:0 0 0 3px rgba(241,90,36,.12)}
@@ -545,7 +550,8 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
 .rsub[hidden]{display:none}
 .fld.full{grid-column:1/-1}
 .reg-side{position:sticky;top:130px;display:grid;gap:14px}
-.reg-side img{border-radius:var(--r);box-shadow:var(--sh)}
+.reg-visit{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;display:grid;gap:6px}
+.reg-visit b{font-size:16px;color:var(--navy)}.reg-visit p{margin:0;line-height:1.6}.reg-visit .d{font-size:13px;color:var(--muted,#5b6275)}.reg-visit a{font-weight:700;color:var(--navy)}
 .reg-call{background:var(--navy);color:#fff;border-radius:var(--r);padding:22px;text-align:center}
 .reg-call span{font-size:13px;opacity:.8}.reg-call a{display:block;font-size:36px;font-weight:900;letter-spacing:-.02em}.reg-call small{opacity:.75}
 
@@ -562,7 +568,7 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
 .ft{background:var(--navy-dk);color:rgba(255,255,255,.75);padding:60px 0 110px;font-size:14px}
 .ft-top{display:flex;justify-content:space-between;gap:30px;align-items:flex-end;padding-bottom:28px;border-bottom:1px solid rgba(255,255,255,.12);flex-wrap:wrap}
 .ft-brand{display:flex;gap:12px;align-items:center;color:#fff}
-.ft-brand .logo-mark{color:#fff;width:42px;height:28px}
+.ft-logo{display:block;width:150px;height:83px;color:#fff;background:currentColor;-webkit-mask:url(img/bi/logo.png) center/contain no-repeat;mask:url(img/bi/logo.png) center/contain no-repeat}
 .ft-brand b{display:block;font-size:22px;letter-spacing:.08em}.ft-brand span{font-size:12px;opacity:.8}
 .ft-call{text-align:right}.ft-call span{display:block;font-size:13px}
 .ft-call a{font-size:40px;font-weight:900;color:#fff;letter-spacing:-.02em;line-height:1.1}
@@ -618,7 +624,7 @@ body:not(.is-home) .hd{background:rgba(255,255,255,.94);backdrop-filter:blur(12p
   .hd-tel span{display:none}.hd-tel{width:40px;height:40px;border-radius:50%;background:var(--orange);color:#fff;justify-content:center}
   .is-home .hd:not(.solid) .hd-tel{background:rgba(255,255,255,.2)}
   .hd-r .btn{display:none}
-  .logo-t b{font-size:18px}
+  .logo-sym{width:33px;height:24px}.logo-word{width:97px;height:13.5px}
   .hero{height:92vh;min-height:600px}
   .hero-copy{align-items:flex-start;text-align:left;justify-content:flex-end;padding-bottom:110px}
   .hero-copy .hero-cta{justify-content:flex-start}
@@ -1025,4 +1031,4 @@ picture{display:contents}
 .pn-logos{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .pn-logos .pn-logo{margin:0;max-width:110px;max-height:30px}
 /* 숫자 상자: "(분양 완료)"·"임차인 모집 중"처럼 붙어 다녀야 하는 말은 중간에서 줄 바꿈 안 함 */
-.stat .nw{white-space:nowrap}
+.stat .nw,.nw{white-space:nowrap}

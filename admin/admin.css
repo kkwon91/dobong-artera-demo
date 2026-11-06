@@ -19,7 +19,8 @@ input,select,textarea{font:inherit;color:inherit}
 .login-card input{height:46px;border:1.5px solid var(--line);border-radius:3px;padding:0 12px;font-size:15px}
 .login-card .btn{height:48px}
 .lg-brand,.side-brand{display:flex;gap:10px;align-items:center;margin-bottom:6px}
-.lg-brand svg,.side-brand svg{width:38px;height:25px;color:var(--navy)}
+.bi-sym{display:block;flex:none;width:39px;height:28px;background:#232A5C;-webkit-mask:url(../assets/img/bi/symbol.png) center/contain no-repeat;mask:url(../assets/img/bi/symbol.png) center/contain no-repeat}
+.bi-word{display:block;width:104px;height:14.5px;margin-bottom:4px;background:#232A5C;-webkit-mask:url(../assets/img/bi/word.png) center/contain no-repeat;mask:url(../assets/img/bi/word.png) center/contain no-repeat}
 .lg-brand b,.side-brand b{display:block;font-size:20px;letter-spacing:.08em;line-height:1}
 .lg-brand span,.side-brand span{font-size:12px;color:var(--sub)}
 .hint{font-size:12.5px;color:var(--sub);text-align:center}.err{color:#D93A2B;font-weight:700;text-align:center;min-height:18px}
