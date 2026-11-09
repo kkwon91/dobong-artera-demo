@@ -690,6 +690,8 @@
     tabs.forEach(function (t) { t.addEventListener('click', function () { setKind(t.dataset.kind); }); });
     var pk = params.get('kind') || (location.hash || '').slice(1);
     if (['invest', 'lease', 'agent'].indexOf(pk) >= 0) setKind(pk);
+    // 같은 쪽에서 메뉴(#invest·#lease·#agent)를 다시 눌러 주소 끝만 바뀔 때도 탭을 바꾼다(11-09 김재구님 제보: 세 메뉴 모두 '투자 문의'로 고정)
+    window.addEventListener('hashchange', function () { var h = (location.hash || '').slice(1); if (['invest', 'lease', 'agent'].indexOf(h) >= 0) setKind(h); });
     if (params.get('unit') && f.elements.unit) f.elements.unit.value = params.get('unit');
     if (params.get('unit') && f.elements.msg) f.elements.msg.value = params.get('unit') + '호 문의드립니다.';
     f.addEventListener('submit', function (e) {
