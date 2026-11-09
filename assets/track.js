@@ -1,6 +1,6 @@
-/* 방문 기록(시안) — 어디서 들어와 어느 구간까지 보고 어디서 나갔는지, 어떤 호실을 들여다봤는지.
-   이 브라우저 localStorage 에만 남기고 서버로 보내지 않는다(정식 오픈 때 GA4·그로스메이트 추적으로 같은 신호를 보냄).
-   이름·연락처 같은 개인정보는 기록하지 않는다. 키: artera.events.v1(최근 3,000건) · artera.vid.v1(방문자 임의 번호) */
+/* 방문 기록 — 어디서 들어와 어느 구간까지 보고 어디서 나갔는지, 어떤 호실을 들여다봤는지.
+   11-09: 운영 서버(remote.js)로 묶어 보내 관리자 '방문 분석'에 모든 방문자가 집계된다.
+   이름·연락처 같은 개인정보는 기록하지 않는다. 키: artera.vid.v1(방문자 임의 번호) · artera.sess.v1(이번 방문) */
 (function () {
   'use strict';
   var A = window.ARTERA || {}, BASE = A.base || '/';
@@ -52,12 +52,10 @@
   sess.last = now;
   try { sessionStorage.setItem(SK, JSON.stringify(sess)); } catch (e) { /* 무시 */ }
 
-  var pv = rid();
+  var pv = rid(), R = window.ARTERA_REMOTE;
+  try { localStorage.removeItem(EV); } catch (e) { /* 예전 시안 기록 정리 */ }
   function push(e, x) {
-    var list = load(EV, []);
-    list.push({ t: new Date().toISOString(), v: vid, s: sess.id, src: sess.src, c: sess.camp || undefined, e: e, p: path, pv: pv, x: x || undefined });
-    if (list.length > MAX) list = list.slice(list.length - MAX);
-    save(EV, list);
+    if (R) R.event({ t: new Date().toISOString(), v: vid, s: sess.id, src: sess.src, c: sess.camp || undefined, e: e, p: path, pv: pv, x: x || undefined });
   }
   window.ARTERA_TRACK = { push: push, session: sess, path: path };
   if (fresh) push('start', { land: path });
@@ -100,7 +98,7 @@
     if (p > maxScroll) maxScroll = Math.min(100, p);
   }, { passive: true });
   var left = false;
-  function leave() { if (left) return; left = true; push('leave', { last: last, dur: Date.now() - now, scroll: maxScroll }); }
+  function leave() { if (left) return; left = true; push('leave', { last: last, dur: Date.now() - now, scroll: maxScroll }); if (R) R.flush(true); }
   addEventListener('pagehide', leave);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') leave(); else left = false; });
 
@@ -127,14 +125,10 @@
   Array.prototype.forEach.call(document.querySelectorAll('[data-form]'), function (f) {
     var started = false;
     f.addEventListener('focusin', function () { if (started) return; started = true; push('form_start', { form: f.getAttribute('data-form') }); });
-    f.addEventListener('submit', function () {
-      setTimeout(function () {
-        var msg = f.querySelector('[data-msg]');
-        if (msg && /\bok\b/.test(msg.className)) {
-          var kind = (f.querySelector('.on[data-kind]') || {}).getAttribute ? f.querySelector('.on[data-kind]').getAttribute('data-kind') : '';
-          push('form_submit', { form: f.getAttribute('data-form'), kind: kind || (f.elements.kind && f.elements.kind.value) || '' });
-        }
-      }, 0);
+    // 서버가 접수했다고 답한 뒤에만 셈(site.js 가 artera:submitted 를 보냄)
+    f.addEventListener('artera:submitted', function (ev) {
+      push('form_submit', { form: f.getAttribute('data-form'), kind: (ev.detail && ev.detail.kind) || '' });
+      if (R) R.flush(false);
     });
   });
 })();

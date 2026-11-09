@@ -677,7 +677,7 @@
     });
   })();
 
-  // ── 문의 폼 (시안: 브라우저에 저장 → 관리자 '문의 접수'에서 확인)
+  // ── 문의 폼 → 운영 서버(remote.js) → 관리자 '문의 접수' (11-09: 브라우저 저장 시안에서 교체)
   var params = new URLSearchParams(location.search);
   var utm = ['utm_source', 'utm_medium', 'utm_campaign'].reduce(function (o, k) { var v = params.get(k) || sessionStorage.getItem(k); if (v) { o[k] = v; sessionStorage.setItem(k, v); } return o; }, {});
   $$('[data-form]').forEach(function (f) {
@@ -698,12 +698,21 @@
       var name = f.elements.name.value.trim(), phone = f.elements.phone.value.replace(/[^0-9]/g, '');
       if (!name || phone.length < 9) { msg.className = 'form-msg err'; msg.textContent = '이름과 연락처를 확인해 주세요.'; return; }
       if (!f.elements.agree.checked) { msg.className = 'form-msg err'; msg.textContent = '개인정보 수집·이용 동의가 필요합니다.'; return; }
-      var data = { id: Date.now().toString(36), at: new Date().toISOString(), kind: kind, page: location.pathname.replace(B, '/'), status: '신규' };
+      var data = { kind: kind, page: location.pathname.replace(B, '/') };
       $$('input,select,textarea', f).forEach(function (el) { if (el.name && el.type !== 'checkbox') data[el.name] = el.value; });
       data.mkt = f.elements.mkt ? f.elements.mkt.checked : false; data.utm = utm;
-      try { var c = JSON.parse(localStorage.getItem(KEY) || '{}'); c.inquiries = c.inquiries || []; c.inquiries.unshift(data); localStorage.setItem(KEY, JSON.stringify(c)); } catch (err) {}
-      msg.className = 'form-msg ok'; msg.textContent = '접수되었습니다. 상담 가능 시간(' + ((A.site || {}).callHours || '') + ')에 연락드리겠습니다.';
-      f.reset(); setKind(kind);
+      var R = window.ARTERA_REMOTE, btn = $('button[type=submit],button:not([type])', f), tel = (A.site || {}).phone || '1551-4458';
+      if (!R || !R.on) { msg.className = 'form-msg err'; msg.textContent = '지금은 온라인 접수를 받을 수 없습니다. ' + tel + '로 전화 주시면 바로 안내해 드립니다.'; return; }
+      if (f.dataset.sending) return;
+      f.dataset.sending = '1'; if (btn) btn.disabled = true;
+      msg.className = 'form-msg'; msg.textContent = '보내는 중입니다…';
+      R.inquiry(data).then(function () {
+        msg.className = 'form-msg ok'; msg.textContent = '접수되었습니다. 상담 가능 시간(' + ((A.site || {}).callHours || '') + ')에 연락드리겠습니다.';
+        f.reset(); setKind(kind);
+        try { f.dispatchEvent(new CustomEvent('artera:submitted', { detail: { kind: kind } })); } catch (err) { /* 무시 */ }
+      }).catch(function () {
+        msg.className = 'form-msg err'; msg.textContent = '보내지 못했습니다. 잠시 뒤 다시 눌러 주시거나 ' + tel + '로 전화 주세요.';
+      }).then(function () { delete f.dataset.sending; if (btn) btn.disabled = false; });
     });
   });
 })();

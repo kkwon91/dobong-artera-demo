@@ -1,4 +1,4 @@
-/* 도봉 아테라 상가 관리자 (시안: 브라우저 저장) */
+/* 도봉 아테라 상가 관리자 — 11-09 운영: 로그인·문의 접수·방문 분석은 운영 서버(assets/remote.js), 나머지 화면은 아직 이 브라우저 저장 */
 (function () {
   'use strict';
   var A = window.ARTERA, KEY = 'artera.cms.v1', SESS = 'artera.admin.login';
@@ -92,17 +92,19 @@
   function log(text) { db.log = db.log || []; db.log.unshift({ at: new Date().toISOString(), text: text }); db.log = db.log.slice(0, 50); }
   function now() { var d = new Date(); return d.toLocaleDateString('ko-KR') + ' ' + d.toTimeString().slice(0, 5); }
 
-  // 시안 예시 문의 (처음 한 번만)
-  if (!db.seeded) {
-    db.seeded = true;
-    db.inquiries = (db.inquiries || []).concat([
-      { id: 'ex1', at: '2026-11-04T01:12:00Z', kind: 'invest', name: '(예시) 김OO', phone: '010-0000-1111', area: '도봉구', unit: '115', budget: '3~5억', loan: '상담 후 결정', status: '신규', utm: { utm_source: 'richgo', utm_campaign: 'dobong_teaser' }, example: true },
-      { id: 'ex2', at: '2026-11-04T00:40:00Z', kind: 'lease', name: '(예시) 박OO', phone: '010-0000-2222', area: '노원구', biz: '베이커리 카페', brand: '', size: '15~20평', status: '연락함', utm: { utm_source: 'meta', utm_campaign: 'kv_a' }, example: true },
-      { id: 'ex3', at: '2026-11-03T07:05:00Z', kind: 'agent', name: '(예시) 이OO', phone: '010-0000-3333', office: '방학역 OO공인중개사', ceo: '이OO', addr: '도봉구 방학동', brief: '2026-11-12', status: '신규', utm: {}, example: true },
-      { id: 'ex4', at: '2026-11-03T03:22:00Z', kind: 'invest', name: '(예시) 최OO', phone: '010-0000-4444', area: '강북구', unit: '', budget: '5~10억', loan: '활용 안 함', status: '완료', utm: { utm_source: 'naver' }, example: true },
-    ]);
-    log('시안 시작 — 호실 상태는 질문 답변(11월) 기준으로 채움');
-    localStorage.setItem(KEY, JSON.stringify(db));
+  // 11-09 운영 전환(사용자 지시 "더미 데이터는 다 지우고 지금부터 운영"): 시안 때 이 브라우저에 쌓인 것(예시 문의·호실 변경·기록) 한 번 비움
+  var OPS = 'artera.ops.v';
+  try { if (localStorage.getItem(OPS) !== '20261109') { localStorage.removeItem(KEY); localStorage.removeItem('artera.events.v1'); localStorage.setItem(OPS, '20261109'); Object.keys(db).forEach(function (k) { delete db[k]; }); } } catch (e) { /* 무시 */ }
+  var R = window.ARTERA_REMOTE || { on: false, token: function () { return ''; }, clearToken: function () {} };
+  var INQ = [], inqAt = 0;
+  function fmtPhone(p) { return String(p || '').replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3'); }
+  function relogin() { toast('로그인 시간이 끝났습니다. 다시 로그인해 주세요'); setTimeout(function () { location.reload(); }, 1400); }
+  function refreshInq(cb) {
+    if (!R.on) return;
+    R.admin('inqList').then(function (r) {
+      if (!r || !r.ok) throw new Error('fail');
+      INQ = r.inquiries || []; inqAt = Date.now(); badges(); if (cb) cb();
+    }).catch(function (e) { if (String(e && e.message) === 'login') relogin(); else if (cb) toast('문의 목록을 불러오지 못했습니다'); });
   }
 
   function stateOf(no) { return Object.assign({ sale: 'selling', lease: 'open', brand: '', note: '' }, A.stateSeed[no] || {}, (db.state || {})[no] || {}); }
@@ -126,7 +128,7 @@
   }
   function news() { return db.news || JSON.parse(JSON.stringify(A.newsSeed)); }
   function popup() { return Object.assign({}, A.popupSeed, db.popup || {}); }
-  function inquiries() { return (load().inquiries || []); }
+  function inquiries() { return INQ; }
   function badges() {
     var changed = Object.keys(db.state || {}).length;
     $('[data-badge=units]').textContent = changed ? changed + ' 변경' : '';
@@ -136,14 +138,24 @@
   }
 
   // ── 로그인
-  function enter() { $('#login').hidden = true; $('#app').hidden = false; route(); badges(); }
+  function curRoute() { return (location.hash || '#dash').slice(1).split('/')[0]; }
+  function enter() {
+    $('#login').hidden = true; $('#app').hidden = false; route(); badges();
+    refreshInq(function () { var r = curRoute(); if (r === 'dash' || r === 'inq' || r === '') route(); });
+    setInterval(function () { refreshInq(function () { var r = curRoute(), a = document.activeElement; if ((r === 'dash' || r === 'inq') && !(a && /SELECT|INPUT|TEXTAREA/.test(a.tagName))) route(); }); }, 60000);
+  }
   $('#loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    if (this.id.value.trim() === 'artera' && this.pw.value === 'demo1234') { sessionStorage.setItem(SESS, '1'); enter(); }
-    else $('#loginErr').textContent = '아이디 또는 비밀번호를 확인해 주세요.';
+    var f = this, err = $('#loginErr'), btn = $('button', f);
+    if (!R.on) { err.textContent = '운영 서버 연결 전입니다. 담당자에게 문의해 주세요.'; return; }
+    err.textContent = '확인 중입니다…'; btn.disabled = true;
+    R.login(f.id.value.trim(), f.pw.value).then(function (r) {
+      if (r && r.ok) { err.textContent = ''; f.pw.value = ''; enter(); return; }
+      err.textContent = r && r.err === 'locked' ? '비밀번호를 여러 번 틀려 15분 동안 잠겼습니다.' : r && r.err === 'setup' ? '서버 설정이 아직 끝나지 않았습니다.' : '아이디 또는 비밀번호를 확인해 주세요.';
+    }).catch(function () { err.textContent = '서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.'; }).then(function () { btn.disabled = false; });
   });
-  $('#logout').addEventListener('click', function () { sessionStorage.removeItem(SESS); location.reload(); });
-  $('#reset').addEventListener('click', function () { if (confirm('시안 데이터(호실 변경·팝업·소식·문의)를 처음 상태로 되돌릴까요?')) { localStorage.removeItem(KEY); location.reload(); } });
+  $('#logout').addEventListener('click', function () { R.clearToken(); try { sessionStorage.removeItem(SESS); } catch (e) {} location.reload(); });
+  $('#reset').addEventListener('click', function () { if (confirm('이 브라우저에서 바꾼 호실·팝업·소식·문구를 처음 상태로 되돌릴까요? (문의 접수·방문 분석은 서버에 있어 그대로입니다)')) { localStorage.removeItem(KEY); location.reload(); } });
 
   // ── 라우팅
   var TITLES = { dash: '대시보드', units: '호실 관리', popup: '팝업 관리', news: '소식 · 보도자료', inq: '문의 접수', aeo: 'AI 검색 점검', texts: '문구 수정', site: '사업 정보' };
@@ -152,8 +164,10 @@
     $$('[data-nav]').forEach(function (a) { a.classList.toggle('on', a.dataset.nav === r); });
     $('#pageTitle').textContent = TITLES[r];
     VIEWS[r]($('#view'));
+    if (LOCAL_ONLY[r]) $('#view').insertAdjacentHTML('afterbegin', '<div class="warn local-note"><b>이 화면은 아직 이 브라우저에만 저장됩니다.</b> 여기서 바꾼 내용은 다른 컴퓨터·방문자에게 보이지 않습니다. 홈페이지에 반영할 내용은 요청해 주시면 바로 반영해 드립니다.</div>');
     window.scrollTo(0, 0);
   }
+  var LOCAL_ONLY = { units: 1, calc: 1, popup: 1, news: 1, texts: 1, site: 1 };
   addEventListener('hashchange', route);
 
   function miniMap(sel) {
@@ -289,23 +303,36 @@
   // ── 문의 접수
   VIEWS.inq = function (v) {
     var kind = 'all';
-    v.innerHTML = '<div class="card"><div class="row between"><div><h2>문의 접수</h2><p class="d">홈페이지 폼으로 들어온 문의입니다. 정식 오픈 때는 접수 즉시 영업팀 문자·메일로 알림이 갑니다. (예시) 표시는 시안용 가짜 데이터입니다.</p></div><div class="row"><div class="chips" data-k><button class="on" data-v="all">전체</button><button data-v="invest">투자</button><button data-v="lease">임차·창업</button><button data-v="agent">협력부동산</button></div><button class="btn btn-n btn-sm" data-csv>엑셀(CSV) 내려받기</button></div></div><div class="tbl-scroll"><table><thead><tr><th>접수</th><th>유형</th><th>이름</th><th>연락처</th><th>내용</th><th>유입</th><th>상태</th></tr></thead><tbody data-rows></tbody></table></div></div>';
+    v.innerHTML = '<div class="card"><div class="row between"><div><h2>문의 접수</h2><p class="d">홈페이지 상담 신청이 들어오는 곳입니다. 상태(신규·연락함·완료)를 바꾸며 관리하고, 엑셀(CSV)로 내려받을 수 있습니다. 1분마다 새 문의를 확인합니다. <span data-at></span></p></div><div class="row"><div class="chips" data-k><button class="on" data-v="all">전체</button><button data-v="invest">투자</button><button data-v="lease">임차·창업</button><button data-v="agent">협력부동산</button></div><button class="btn btn-line btn-sm" data-reload>새로 고침</button><button class="btn btn-n btn-sm" data-csv>엑셀(CSV) 내려받기</button></div></div><div class="tbl-scroll"><table><thead><tr><th>접수</th><th>유형</th><th>이름</th><th>연락처</th><th>내용</th><th>유입</th><th>상태</th><th></th></tr></thead><tbody data-rows></tbody></table></div></div>';
     function rows() {
-      var all = load().inquiries || [];
+      var all = INQ;
+      $('[data-at]', v).textContent = inqAt ? '(마지막 확인 ' + new Date(inqAt).toTimeString().slice(0, 5) + ')' : '(불러오는 중…)';
       var q = all.filter(function (x) { return kind === 'all' || x.kind === kind; });
       $('[data-rows]', v).innerHTML = q.map(function (x) {
         var detail = x.kind === 'invest' ? [x.unit ? x.unit + '호' : '', x.budget, x.loan].filter(Boolean).join(' · ') : x.kind === 'lease' ? [x.biz, x.brand, x.size].filter(Boolean).join(' · ') : [x.office, x.addr, x.brief ? '브리핑 ' + x.brief : ''].filter(Boolean).join(' · ');
         var u = x.utm || {};
-        return '<tr data-id="' + x.id + '"><td>' + new Date(x.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</td><td><span class="pill" style="background:' + ({ invest: '#F15A24', lease: '#36A9E1', agent: '#1F2761' })[x.kind] + '">' + ({ invest: '투자', lease: '임차', agent: '중개사' })[x.kind] + '</span></td><td><b>' + esc(x.name) + '</b></td><td>' + esc(x.phone) + '</td><td>' + esc(detail || x.msg || '-') + '</td><td>' + esc(u.utm_source ? u.utm_source + (u.utm_campaign ? ' / ' + u.utm_campaign : '') : '직접 방문') + '</td><td><select data-st>' + ['신규', '연락함', '완료'].map(function (s) { return '<option' + (x.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td></tr>';
-      }).join('') || '<tr><td colspan="7" class="empty">문의가 없습니다.</td></tr>';
+        return '<tr data-id="' + x.id + '"><td>' + new Date(x.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</td><td><span class="pill" style="background:' + ({ invest: '#F15A24', lease: '#36A9E1', agent: '#1F2761' })[x.kind] + '">' + ({ invest: '투자', lease: '임차', agent: '중개사' })[x.kind] + '</span></td><td><b>' + esc(x.name) + '</b></td><td><a class="link" href="tel:' + esc(x.phone) + '">' + esc(fmtPhone(x.phone)) + '</a></td><td>' + esc([detail, x.kind === 'invest' && x.area ? x.area : '', detail && x.msg ? x.msg : ''].filter(Boolean).join(' · ') || x.msg || '-') + '</td><td>' + esc(u.utm_source ? u.utm_source + (u.utm_campaign ? ' / ' + u.utm_campaign : '') : '직접 방문') + '</td><td><select data-st>' + ['신규', '연락함', '완료'].map(function (s) { return '<option' + (x.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td><td><button class="link" data-del title="잘못 들어온 문의·시험 신청 지우기">지우기</button></td></tr>';
+      }).join('') || '<tr><td colspan="8" class="empty">' + (inqAt ? '아직 들어온 문의가 없습니다.' : '불러오는 중입니다…') + '</td></tr>';
       $$('[data-st]', v).forEach(function (s) { s.addEventListener('change', function () {
-        var all2 = load(), id = s.closest('tr').dataset.id; all2.inquiries.forEach(function (x) { if (x.id === id) x.status = s.value; });
-        db.inquiries = all2.inquiries; save('상태를 바꿨습니다');
+        var id = s.closest('tr').dataset.id, val = s.value; s.disabled = true;
+        R.admin('inqStatus', { id: id, status: val }).then(function (r) {
+          if (!r || !r.ok) throw new Error('fail');
+          INQ.forEach(function (x) { if (x.id === id) x.status = val; }); badges(); toast('상태를 바꿨습니다');
+        }).catch(function (e) { if (String(e && e.message) === 'login') relogin(); else { toast('저장하지 못했습니다. 다시 시도해 주세요'); rows(); } }).then(function () { s.disabled = false; });
+      }); });
+      $$('[data-del]', v).forEach(function (b) { b.addEventListener('click', function () {
+        var tr = b.closest('tr'), id = tr.dataset.id, x = INQ.filter(function (q) { return q.id === id; })[0];
+        if (!x || !confirm(x.name + ' 님 문의를 지울까요? 시트에서도 지워지고 되돌릴 수 없습니다.')) return;
+        R.admin('inqDelete', { id: id }).then(function (r) {
+          if (!r || !r.ok) throw new Error('fail');
+          INQ = INQ.filter(function (q) { return q.id !== id; }); badges(); rows(); toast('지웠습니다');
+        }).catch(function (e) { if (String(e && e.message) === 'login') relogin(); else toast('지우지 못했습니다'); });
       }); });
     }
+    $('[data-reload]', v).addEventListener('click', function () { $('[data-at]', v).textContent = '(불러오는 중…)'; refreshInq(rows); });
     $$('[data-k] button', v).forEach(function (b) { b.addEventListener('click', function () { $$('[data-k] button', v).forEach(function (x) { x.classList.toggle('on', x === b); }); kind = b.dataset.v; rows(); }); });
     $('[data-csv]', v).addEventListener('click', function () {
-      var all = load().inquiries || [], cols = ['at', 'kind', 'name', 'phone', 'area', 'unit', 'budget', 'loan', 'biz', 'brand', 'size', 'office', 'ceo', 'addr', 'brief', 'msg', 'status'];
+      var all = INQ, cols = ['at', 'kind', 'name', 'phone', 'area', 'unit', 'budget', 'loan', 'biz', 'brand', 'size', 'office', 'ceo', 'addr', 'brief', 'msg', 'status'];
       var csv = '﻿' + cols.join(',') + ',utm_source,utm_campaign\n' + all.map(function (x) { return cols.map(function (c) { return '"' + String(x[c] == null ? '' : x[c]).replace(/"/g, '""') + '"'; }).join(',') + ',"' + ((x.utm || {}).utm_source || '') + '","' + ((x.utm || {}).utm_campaign || '') + '"'; }).join('\n');
       var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = '도봉아테라_문의_' + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
     });
@@ -367,5 +394,5 @@
   // 덧붙인 화면(방문 분석 등) 등록 — funnel.js 가 먼저 읽혀 ARTERA_ADMIN_EXT 에 넣어 둠
   (window.ARTERA_ADMIN_EXT || []).forEach(function (f) { try { f({ A: A, VIEWS: VIEWS, TITLES: TITLES, esc: esc, $: $, $$: $$, stateOf: stateOf, colorOf: colorOf, db: db, save: save, log: log }); } catch (e) { console.error(e); } });
   // 이미 로그인한 탭이면 바로 들어감 (VIEWS 정의 뒤에 실행)
-  if (sessionStorage.getItem(SESS) === '1') enter();
+  if (R.on && R.token()) enter();
 })();

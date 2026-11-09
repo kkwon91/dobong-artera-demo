@@ -1,6 +1,5 @@
 /* 관리자 · 방문 분석 — 퍼널·구간 이탈·출처·관심 호실
-   실제 기록 = 홈페이지 assets/track.js 가 이 브라우저에 남긴 것(artera.events.v1)
-   예시 = 씨앗 고정 생성기(14일). 화면 모든 숫자에 '예시' 표시. 정식 오픈 때 GA4·그로스메이트 수집으로 교체 */
+   11-09 운영: 홈페이지 assets/track.js 가 운영 서버로 보낸 모든 방문자의 실제 기록만 씀(예시 생성기 삭제) */
 (function () {
   'use strict';
   window.ARTERA_ADMIN_EXT = window.ARTERA_ADMIN_EXT || [];
@@ -11,7 +10,8 @@
     var HEAT = ['#EAEEFB', '#C5D0F2', '#97A9E6', '#6681D6', '#4157C4', '#2A3A8F']; // 한 색 밝음→어두움
     var SRC = { 'naver-ad': '네이버 검색광고', naver: '네이버 검색', 'naver-blog': '네이버 블로그·카페', kakao: '카카오', meta: '인스타·페이스북', youtube: '유튜브', google: '구글', richgo: '리치고 앱', sms: '문자', qr: '현수막·전단 QR', ai: 'AI 검색', direct: '직접 방문', other: '기타 사이트' };
     var SECS = ['첫 화면', '혜택 3가지', '입점 현황', '조감 영상', '프리미엄', '배치도', '입지', '분양가', '소식', '상담 신청', '자주 묻는 질문'];
-    var ui = (function () { try { return Object.assign({ days: 14, data: 'all' }, JSON.parse(localStorage.getItem(UI)) || {}); } catch (e) { return { days: 14, data: 'all' }; } })();
+    var ui = (function () { try { var u = Object.assign({ days: 14 }, JSON.parse(localStorage.getItem(UI)) || {}); delete u.data; return u; } catch (e) { return { days: 14 }; } })();
+    try { localStorage.removeItem(EV); } catch (e) { /* 예전 시안 기록 정리 */ }
     function saveUi() { try { localStorage.setItem(UI, JSON.stringify(ui)); } catch (e) { /* 무시 */ } }
     function P(x) { var v = (x || 0) * 100; return (v > 0 && v < 10 ? v.toFixed(1) : String(Math.round(v))) + '%'; }
     function N(x) { return Number(x || 0).toLocaleString('ko-KR'); }
@@ -20,74 +20,10 @@
     function jo(w, a, b) { var c = String(w).charCodeAt(String(w).length - 1); return w + ((c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28) ? a : b); }
     function stOf(no) { var s = K.stateOf(no), c = K.colorOf(s); return { s: s, c: c }; }
 
-    // ── 씨앗 고정 난수 ──
-    function rng(seed) { var a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-    function pick(r, pairs) { var tot = pairs.reduce(function (s, p) { return s + p[1]; }, 0), x = r() * tot; for (var i = 0; i < pairs.length; i++) { x -= pairs[i][1]; if (x <= 0) return pairs[i][0]; } return pairs[pairs.length - 1][0]; }
-
-    // ── 예시 방문 기록 (같은 날짜면 매번 같은 결과) ──
-    // 출처별 성향: [비중, 끝까지 내려보는 정도, 문의 성향]
-    var MIX = { 'naver-ad': [28, 0.86, 0.9], naver: [17, 1.0, 1.25], 'naver-blog': [10, 1.02, 1.0], kakao: [11, 0.92, 1.0], meta: [9, 0.72, 0.45], richgo: [7, 1.08, 1.3], sms: [5, 1.0, 1.9], qr: [4, 0.94, 1.1], direct: [6, 1.05, 1.5], ai: [1.6, 1.1, 1.4], google: [1.4, 0.95, 1.0] };
-    var CONT = [0.74, 0.88, 0.83, 0.86, 0.84, 0.82, 0.86, 0.66, 0.84, 0.74]; // 다음 구간으로 넘어갈 확률(첫 화면→혜택 …)
-    function unitWeights() {
-      return A.units.map(function (u) {
-        var s = K.stateOf(u.no), w = Math.sqrt(u.exP);
-        w *= s.lease === 'open' ? (s.sale === 'sold' ? 0.5 : 1.35) : s.lease === 'leased' ? 1.25 : s.lease === 'loi' ? 0.9 : 0.55;
-        if (/^(114|115|116|117|101|109|201|204)$/.test(u.no)) w *= 1.35; // 모서리·대형 호실
-        return [u.no, w];
-      });
-    }
-    function genExample(days) {
-      var today = new Date(); today.setHours(0, 0, 0, 0);
-      var end = today.getTime() + 864e5, start = end - days * 864e5, out = [];
-      var r = rng(Number(ymd(today.getTime()).replace(/-/g, '')) * 7 + days), UW = unitWeights();
-      var srcPairs = Object.keys(MIX).map(function (k) { return [k, MIX[k][0]]; });
-      for (var d = 0; d < days; d++) {
-        var day0 = start + d * 864e5, dow = new Date(day0).getDay();
-        var n = Math.round((150 + r() * 70) * (dow === 0 ? 0.78 : dow === 6 ? 1.15 : 1) * (1 + d * 0.012));
-        for (var i = 0; i < n; i++) {
-          var src = pick(r, srcPairs), m = MIX[src], sid = 'ex' + d + '_' + i, vid = 'xv' + Math.floor(r() * 1e9).toString(36);
-          var t = day0 + (9 + r() * 13) * 3600e3, ev = [];
-          var push = function (e, p, x) { ev.push({ t: t, s: sid, v: vid, src: src, e: e, p: p, x: x }); t += 4000 + r() * 30000; };
-          var land = pick(r, [['/', 80], ['/floorplan/', 8], ['/premium/', 5], ['/units/', 4], ['/news/', 3]]);
-          if (land === '/units/') land = '/units/' + pick(r, UW) + '/';
-          push('start', land, { land: land });
-          var reachedMap = false, reach = 0, last = '첫 화면';
-          if (land === '/') {
-            push('pv', '/');
-            for (var k = 0; k < SECS.length; k++) {
-              push('sec', '/', { n: SECS[k], i: k });
-              reach = k; last = SECS[k];
-              if (SECS[k] === '배치도') reachedMap = true;
-              if (k < CONT.length && r() > Math.min(0.97, CONT[k] * m[1])) break;
-            }
-          } else { push('pv', land); reachedMap = land === '/floorplan/'; if (/^\/units\//.test(land)) push('unit', land, { no: land.slice(7, 10), how: 'page' }); }
-          var units = [];
-          if (reachedMap) { var nu = Math.floor(r() * (src === 'richgo' ? 6 : 4.4)); for (var j = 0; j < nu; j++) { var no = pick(r, UW); if (units.indexOf(no) < 0) { units.push(no); push('unit', land === '/' ? '/' : land, { no: no, how: 'hover' }); } } }
-          push('leave', land, { last: last, dur: 6000 + reach * 9000 + r() * 20000 });
-          // 더 둘러보기
-          if (units.length && r() < 0.18) { var up = '/units/' + units[0] + '/'; push('pv', up); push('unit', up, { no: units[0], how: 'page' }); push('leave', up, { last: '쪽 머리', dur: 20000 + r() * 40000 }); }
-          if (reach >= 4 && r() < 0.1) { push('pv', '/premium/'); push('leave', '/premium/', { last: '수익률 계산기', dur: 30000 + r() * 60000 }); }
-          // 문의
-          var c = m[2] * (units.length ? 1.25 : 0.8);
-          var deep = reach >= 7 || land !== '/';
-          if (deep && r() < 0.035 * c) push('call', land, {});
-          var formAt = reach >= 9 ? '/' : (units.length && r() < 0.07 * c) ? '/register/' : '';
-          if (formAt === '/register/') push('pv', '/register/');
-          if (formAt && r() < (formAt === '/' ? 0.17 : 0.55) * c) {
-            push('form_start', formAt, {});
-            if (r() < 0.5) push('form_submit', formAt, { kind: pick(r, [['invest', 6], ['lease', 3], ['agent', 1]]) });
-          }
-          Array.prototype.push.apply(out, ev);
-        }
-      }
-      return out;
-    }
-
     // ── 실제 기록 ──
-    function real(days) {
-      var since = Date.now() - days * 864e5, list = [];
-      try { list = JSON.parse(localStorage.getItem(EV)) || []; } catch (e) { list = []; }
-      return list.map(function (e) { return { t: +new Date(e.t), s: 'r_' + e.s, v: e.v, src: e.src, e: e.e, p: e.p, x: e.x || {} }; }).filter(function (e) { return e.t >= since; });
+    function real(list, days) {
+      var since = Date.now() - days * 864e5;
+      return (list || []).map(function (e) { return { t: +new Date(e.t), s: 'r_' + e.s, v: e.v, src: e.src, e: e.e, p: e.p, pv: e.pv, x: e.x || {} }; }).filter(function (e) { return e.t >= since && e.s !== 'r_undefined'; });
     }
     // ── 방문(세션)으로 묶기 ──
     function sessionize(events) {
@@ -95,7 +31,7 @@
       events.forEach(function (e) { (by[e.s] = by[e.s] || []).push(e); });
       // 쪽 보기(pv)가 없는 방문(앞 쪽의 '나감'만 남은 조각)은 빼고 셈
       return Object.keys(by).filter(function (id) { return by[id].some(function (e) { return e.e === 'pv'; }); }).map(function (id) {
-        var ev = by[id].sort(function (a, b) { return a.t - b.t; }), S = { id: id, ex: id.indexOf('ex') === 0, src: ev[0].src || 'direct', t: ev[0].t, land: (ev[0].x && ev[0].x.land) || ev[0].p, pv: 0, secs: {}, maxI: -1, units: [], call: 0, fs: 0, sub: 0, dur: 0, last: '', lastP: '' };
+        var ev = by[id].sort(function (a, b) { return a.t - b.t; }), pvDur = {}, S = { id: id, ex: id.indexOf('ex') === 0, src: ev[0].src || 'direct', t: ev[0].t, land: (ev[0].x && ev[0].x.land) || ev[0].p, pv: 0, secs: {}, maxI: -1, units: [], call: 0, fs: 0, sub: 0, dur: 0, last: '', lastP: '' };
         ev.forEach(function (e) {
           if (e.e === 'pv') S.pv++;
           if (e.e === 'sec' && e.p === '/') { S.secs[e.x.n] = 1; var i = SECS.indexOf(e.x.n); if (i > S.maxI) S.maxI = i; }
@@ -103,9 +39,10 @@
           if (e.e === 'call') S.call++;
           if (e.e === 'form_start') S.fs++;
           if (e.e === 'form_submit') S.sub++;
-          if (e.e === 'leave') { S.dur += e.x.dur || 0; S.last = e.x.last; S.lastP = e.p; }
+          if (e.e === 'leave') { var pk = e.pv || (e.p + e.t); pvDur[pk] = Math.max(pvDur[pk] || 0, e.x.dur || 0); S.last = e.x.last; S.lastP = e.p; }
           if (e.p === '/floorplan/') S.fp = 1;
         });
+        S.dur = Object.keys(pvDur).reduce(function (a, k) { return a + pvDur[k]; }, 0);
         S.pv = Math.max(1, S.pv);
         S.bounce = S.pv === 1 && S.maxI <= 0 && !S.units.length && !S.fs && !S.call;
         return S;
@@ -189,17 +126,33 @@
 
     // ── 그리기 ──
     function tipAttr(t) { return ' data-tip="' + esc(t) + '"'; }
-    function view(v) {
-      var ex = ui.data === 'all' ? genExample(ui.days) : [], re = real(ui.days);
-      var list = sessionize(ex.concat(re));
-      var realN = sessionize(re).length, F = funnel(list), rows = secRows(list), srcs = srcRows(list), us = unitStats(list), days = daily(list, ui.days);
+    var cache = {};
+    function view(v, force) {
+      var R = window.ARTERA_REMOTE;
+      if (!R || !R.on) { v.innerHTML = '<div class="card"><h2>방문 분석</h2><p class="d">운영 서버가 아직 연결되지 않았습니다. 연결되면 그때부터 모든 방문자의 기록이 쌓입니다.</p></div>'; return; }
+      var c = cache[ui.days];
+      if (c && !force && Date.now() - c.at < 120000) return draw(v, c.list);
+      v.innerHTML = '<div class="card"><p class="d">방문 기록을 불러오는 중입니다…</p></div>';
+      R.admin('events', { days: ui.days }, 60000).then(function (r) {
+        if (!r || !r.ok) throw new Error('fail');
+        cache[ui.days] = { at: Date.now(), list: r.events || [] };
+        draw(v, r.events || []);
+      }).catch(function (e) {
+        if (String(e && e.message) === 'login') { location.reload(); return; }
+        v.innerHTML = '<div class="card"><h2>방문 분석</h2><p class="d">방문 기록을 불러오지 못했습니다. 잠시 뒤 다시 열어 주세요.</p><button class="btn btn-line btn-sm" data-retry>다시 불러오기</button></div>';
+        $('[data-retry]', v).addEventListener('click', function () { view(v, true); });
+      });
+    }
+    function draw(v, raw) {
+      var re = real(raw, ui.days);
+      var list = sessionize(re);
+      var realN = list.length, F = funnel(list), rows = secRows(list), srcs = srcRows(list), us = unitStats(list), days = daily(list, ui.days);
       var tot = list.length || 1, bounce = list.filter(function (S) { return S.bounce; }).length, subs = list.filter(function (S) { return S.sub; }).length, calls = list.filter(function (S) { return S.call; }).length;
       var avg = list.reduce(function (s, S) { return s + S.dur; }, 0) / tot / 1000;
-      var tag = ui.data === 'all' ? '<span class="ex-tag">예시 포함</span>' : '<span class="ex-tag real">실제 기록만</span>';
-      var bar = '<div class="fn-bar"><div class="chips" data-days>' + [7, 14].map(function (d) { return '<button class="' + (ui.days === d ? 'on' : '') + '" data-d="' + d + '">최근 ' + d + '일</button>'; }).join('') + '</div>' +
-        '<div class="chips" data-mode><button class="' + (ui.data === 'all' ? 'on' : '') + '" data-m="all">예시 + 실제 기록</button><button class="' + (ui.data === 'real' ? 'on' : '') + '" data-m="real">이 브라우저 실제 기록만</button></div>' +
-        '<span class="fn-real">실제 기록 ' + N(realN) + '방문 <button class="link" data-clear>기록 지우기</button></span></div>';
-      var notice = '<p class="fn-note">시안이라 홈페이지 방문 기록은 <b>방문한 그 브라우저</b>에만 남습니다. 숫자 대부분은 화면을 보여 드리려고 만든 <b>예시</b>입니다. 정식 오픈 때 GA4·그로스메이트 수집으로 바꾸면 모든 방문자가 집계됩니다. 이름·연락처는 기록하지 않습니다.</p>';
+      var tag = '<span class="ex-tag real">실제 기록</span>';
+      var bar = '<div class="fn-bar"><div class="chips" data-days>' + [7, 14, 30].map(function (d) { return '<button class="' + (ui.days === d ? 'on' : '') + '" data-d="' + d + '">최근 ' + d + '일</button>'; }).join('') + '</div>' +
+        '<span class="fn-real">방문 ' + N(realN) + '건 <button class="link" data-refresh>새로 고침</button></span></div>';
+      var notice = '<p class="fn-note">홈페이지를 찾은 <b>모든 방문자</b>의 기록입니다(2026년 11월 운영 시작부터 집계). 이름·연락처는 기록하지 않습니다. 관리자 화면과 문구 수정 모드에서 본 것은 세지 않습니다.</p>';
       var kpi = '<div class="fn-kpis">' + [
         ['방문', N(list.length), '최근 ' + ui.days + '일'],
         ['첫 화면에서 이탈', P(bounce / tot), '한 쪽만 보고 첫 화면에서 나간 방문'],
@@ -258,8 +211,7 @@
         dg.map(function (x) { return '<li><span class="k">' + esc(x.k) + '</span><p>' + esc(x.t) + '</p>' + (x.fix ? '<p class="fix">→ ' + esc(x.fix) + '</p>' : '') + '</li>'; }).join('') + '</ol></div>';
       v.innerHTML = bar + notice + kpi + diag + '<div class="fn-grid">' + fun + sec + '</div>' + unitC + '<div class="fn-grid">' + srcT + trend + '</div>';
       $$('[data-d]', v).forEach(function (b) { b.addEventListener('click', function () { ui.days = +b.dataset.d; saveUi(); view(v); }); });
-      $$('[data-m]', v).forEach(function (b) { b.addEventListener('click', function () { ui.data = b.dataset.m; saveUi(); view(v); }); });
-      $('[data-clear]', v).addEventListener('click', function () { if (confirm('이 브라우저에 남은 실제 방문 기록을 지울까요?')) { localStorage.removeItem(EV); view(v); } });
+      $('[data-refresh]', v).addEventListener('click', function () { view(v, true); });
       bindTips(v);
     }
     // ── 마우스 올리면 뜨는 설명 ──
@@ -274,6 +226,6 @@
     }
     K.TITLES.funnel = '방문 분석';
     K.VIEWS.funnel = view;
-    K.funnelApi = { genExample: genExample, sessionize: sessionize, funnel: funnel };
+    K.funnelApi = { sessionize: sessionize, funnel: funnel };
   });
 })();

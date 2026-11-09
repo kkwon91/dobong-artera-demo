@@ -13,10 +13,9 @@
 <div class="login" id="login">
   <form class="login-card" id="loginForm">
     <div class="lg-brand"><i class="bi-sym" aria-hidden="true"></i><div><i class="bi-word" role="img" aria-label="ARTERA"></i><span>도봉 아테라 상가 관리자</span></div></div>
-    <label>아이디<input name="id" value="" autocomplete="username" placeholder="artera"></label>
-    <label>비밀번호<input name="pw" type="password" autocomplete="current-password" placeholder="demo1234"></label>
+    <label>아이디<input name="id" value="" autocomplete="username" required></label>
+    <label>비밀번호<input name="pw" type="password" autocomplete="current-password" required></label>
     <button class="btn btn-o">로그인</button>
-    <p class="hint">시안용 계정 : artera / demo1234</p>
     <p class="err" id="loginErr"></p>
   </form>
 </div>
@@ -37,7 +36,7 @@
     </nav>
     <div class="side-foot">
       <a href="../" target="_blank" class="btn btn-line btn-block">홈페이지 보기 ↗</a>
-      <button class="link" id="reset">시안 데이터 초기화</button>
+      <button class="link" id="reset">이 브라우저 변경 되돌리기</button>
       <button class="link" id="logout">로그아웃</button>
     </div>
   </aside>
@@ -47,6 +46,7 @@
   </main>
 </div>
 <div class="toast" id="toast"></div>
+<script src="../assets/remote.js"></script>
 <script src="../assets/data.js"></script>
 <script src="funnel.js"></script>
 <script src="calc.js"></script>
