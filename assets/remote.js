@@ -4,7 +4,7 @@
    규약: GET ?a=status&site=… · POST(text/plain JSON) {a:'inq'|'ev'|'login'|'admin', site, …} → JSON */
 (function () {
   'use strict';
-  var URL_ = ''; // ← 고정 주소가 생기면 여기에(https://…/). 비어 있으면 assets/server.json 에서 지금 주소를 읽음(터널이 바뀔 때 자동 갱신)
+  var URL_ = 'https://ops.dbartera.com/'; // ← 사이트 운영 서버 고정 주소(클라우드플레어 이름 있는 터널, 11-09). 비우면 assets/server.json 에서 지금 주소를 읽음
   var SITE = 'dbartera';
   var GA_ID = 'G-ZCJFW5TK8N'; // ← GA4 측정 ID(dataknows 계정 › 도봉 아테라 단지 내 상가 속성 563332601). 비우면 GA 안 붙음
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
