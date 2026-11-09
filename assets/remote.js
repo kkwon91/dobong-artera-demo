@@ -6,7 +6,7 @@
   'use strict';
   var URL_ = ''; // ← 고정 주소가 생기면 여기에(https://…/). 비어 있으면 assets/server.json 에서 지금 주소를 읽음(터널이 바뀔 때 자동 갱신)
   var SITE = 'dbartera';
-  var GA_ID = ''; // ← GA4 측정 ID(G-XXXXXXX). 비우면 GA 안 붙음
+  var GA_ID = 'G-ZCJFW5TK8N'; // ← GA4 측정 ID(dataknows 계정 › 도봉 아테라 단지 내 상가 속성 563332601). 비우면 GA 안 붙음
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   try { if (LOCAL) { URL_ = localStorage.getItem('artera.remote.url') || URL_; GA_ID = localStorage.getItem('artera.ga.id') || ''; } } catch (e) {}
   var TOK = 'artera.admin.token', ST = 'artera.site.status', SV = 'artera.server.url';
