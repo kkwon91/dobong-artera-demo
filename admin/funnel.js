@@ -209,7 +209,9 @@
       var dg = diagnose(F, rows, srcs, us);
       var diag = '<div class="card fn-diag"><h2>자동 진단 ' + tag + '</h2><p class="d">위 숫자에서 규칙으로 뽑은 문장입니다(AI 비용 없음). 고칠 곳은 관리자 "문구 수정"이나 요청으로 바로 반영합니다.</p><ol>' +
         dg.map(function (x) { return '<li><span class="k">' + esc(x.k) + '</span><p>' + esc(x.t) + '</p>' + (x.fix ? '<p class="fix">→ ' + esc(x.fix) + '</p>' : '') + '</li>'; }).join('') + '</ol></div>';
-      v.innerHTML = bar + notice + kpi + diag + '<div class="fn-grid">' + fun + sec + '</div>' + unitC + '<div class="fn-grid">' + srcT + trend + '</div>';
+      var gaCard = '<div class="card" data-ga><h2>방문자 특성 · 연령·성별·지역 <span class="ex-tag real">GA4</span></h2><p class="d">GA4에서 불러오는 중입니다…</p></div>';
+      v.innerHTML = bar + notice + kpi + gaCard + diag + '<div class="fn-grid">' + fun + sec + '</div>' + unitC + '<div class="fn-grid">' + srcT + trend + '</div>';
+      loadGa(v);
       $$('[data-d]', v).forEach(function (b) { b.addEventListener('click', function () { ui.days = +b.dataset.d; saveUi(); view(v); }); });
       $('[data-refresh]', v).addEventListener('click', function () { view(v, true); });
       bindTips(v);
@@ -223,6 +225,32 @@
         el.addEventListener('mousemove', function (e) { var w = tipEl.offsetWidth; tipEl.style.left = Math.min(innerWidth - w - 12, e.clientX + 14) + 'px'; tipEl.style.top = (e.clientY + 16) + 'px'; });
         el.addEventListener('mouseleave', function () { tipEl.hidden = true; });
       });
+    }
+    // ── GA4 연령·성별·지역(사이트 운영 서버가 GA4 데이터 API 로 읽어 줌, 6시간 보관) ──
+    var REGION = { Seoul: '서울', 'Gyeonggi-do': '경기', Incheon: '인천', Busan: '부산', Daegu: '대구', Daejeon: '대전', Gwangju: '광주', Ulsan: '울산', 'Sejong-si': '세종', 'Gangwon-do': '강원', 'Gangwon State': '강원', 'Chungcheongbuk-do': '충북', 'Chungcheongnam-do': '충남', 'Jeollabuk-do': '전북', 'Jeonbuk State': '전북', 'Jeollanam-do': '전남', 'Gyeongsangbuk-do': '경북', 'Gyeongsangnam-do': '경남', 'Jeju-do': '제주' };
+    function ageLab(k) { return k === 'unknown' || k === '(not set)' ? '알 수 없음' : /\+$/.test(k) ? k.replace('+', '') + '세 이상' : k.replace('-', '~') + '세'; }
+    function genLab(k) { return { male: '남성', female: '여성' }[k] || '알 수 없음'; }
+    function regLab(k) { return k === '(not set)' ? '알 수 없음' : REGION[k] || k; }
+    function gaList(title, rows, lab) {
+      rows = (rows || []).slice(); var tot = rows.reduce(function (s, r) { return s + r.n; }, 0) || 1;
+      var body = rows.slice(0, 8).map(function (r) {
+        var w = r.n / tot * 100;
+        return '<div style="display:grid;grid-template-columns:92px 1fr 64px;gap:8px;align-items:center;margin:7px 0"' + tipAttr(lab(r.k) + ' — ' + N(r.n) + '명 (' + P(r.n / tot) + ')') + '><span style="font-size:13px">' + esc(lab(r.k)) + '</span><span style="height:10px;background:#EEF1F8;border-radius:2px;overflow:hidden"><i style="display:block;height:100%;width:' + w.toFixed(1) + '%;background:' + BLUE + '"></i></span><b style="font-size:13px;text-align:right">' + P(r.n / tot) + '</b></div>';
+      }).join('');
+      return '<div><h3 style="font-size:14px;margin:0 0 6px">' + title + '</h3>' + (body || '<p class="d">아직 표시할 만큼 모이지 않았습니다.</p>') + '</div>';
+    }
+    function loadGa(v) {
+      var box = $('[data-ga]', v), R = window.ARTERA_REMOTE; if (!box || !R) return;
+      var days = ui.days === 7 ? 7 : ui.days === 14 ? 14 : 30, head = '<h2>방문자 특성 · 연령·성별·지역 <span class="ex-tag real">GA4 · 최근 ' + days + '일</span></h2>';
+      R.admin('ga', { days: days }, 60000).then(function (r) {
+        if (!r || !r.ok) {
+          var why = { 'ga-not-set': 'GA4 연결 전입니다. 측정 ID와 속성 번호를 서버에 넣으면 여기에 나옵니다.', 'ga-key-missing': '서버에 GA 읽기 열쇠가 아직 없습니다.', 'ga-fail': 'GA에서 불러오지 못했습니다. 서버 계정의 GA 권한을 확인해 주세요.' }[r && r.err] || '불러오지 못했습니다.';
+          box.innerHTML = head + '<p class="d">' + why + '</p>'; return;
+        }
+        box.innerHTML = head + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;margin-top:10px">' + gaList('연령대', r.age, ageLab) + gaList('성별', r.gender, genLab) + gaList('지역(시·도)', r.region, regLab) + '</div>' +
+          '<p class="d" style="margin-top:10px">연령·성별은 GA4가 구글 신호로 추정한 값이라 일부 방문자만 잡히고, 방문자가 적으면 GA가 숨깁니다. 지역은 접속 위치 기준입니다. ' + (r.at ? '(' + new Date(r.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' 기준)' : '') + '</p>';
+        bindTips(box);
+      }).catch(function (e) { box.innerHTML = head + '<p class="d">' + (String(e && e.message) === 'login' ? '로그인이 끝났습니다. 다시 로그인해 주세요.' : '불러오지 못했습니다. 잠시 뒤 다시 열어 주세요.') + '</p>'; });
     }
     K.TITLES.funnel = '방문 분석';
     K.VIEWS.funnel = view;

@@ -710,6 +710,7 @@
         msg.className = 'form-msg ok'; msg.textContent = '접수되었습니다. 상담 가능 시간(' + ((A.site || {}).callHours || '') + ')에 연락드리겠습니다.';
         f.reset(); setKind(kind);
         try { f.dispatchEvent(new CustomEvent('artera:submitted', { detail: { kind: kind } })); } catch (err) { /* 무시 */ }
+        if (window.gtag) window.gtag('event', 'generate_lead', { form_name: f.getAttribute('data-form'), lead_kind: kind }); // GA 전환(이름·연락처는 보내지 않음)
       }).catch(function () {
         msg.className = 'form-msg err'; msg.textContent = '보내지 못했습니다. 잠시 뒤 다시 눌러 주시거나 ' + tel + '로 전화 주세요.';
       }).then(function () { delete f.dataset.sending; if (btn) btn.disabled = false; });

@@ -152,7 +152,7 @@
     R.login(f.id.value.trim(), f.pw.value).then(function (r) {
       if (r && r.ok) { err.textContent = ''; f.pw.value = ''; enter(); return; }
       err.textContent = r && r.err === 'locked' ? '비밀번호를 여러 번 틀려 15분 동안 잠겼습니다.' : r && r.err === 'setup' ? '서버 설정이 아직 끝나지 않았습니다.' : '아이디 또는 비밀번호를 확인해 주세요.';
-    }).catch(function () { err.textContent = '서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.'; }).then(function () { btn.disabled = false; });
+    }).catch(function (e) { err.textContent = String(e && e.message) === 'closed' ? '운영이 정지된 사이트입니다. 담당자에게 문의해 주세요.' : '서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.'; }).then(function () { btn.disabled = false; });
   });
   $('#logout').addEventListener('click', function () { R.clearToken(); try { sessionStorage.removeItem(SESS); } catch (e) {} location.reload(); });
   $('#reset').addEventListener('click', function () { if (confirm('이 브라우저에서 바꾼 호실·팝업·소식·문구를 처음 상태로 되돌릴까요? (문의 접수·방문 분석은 서버에 있어 그대로입니다)')) { localStorage.removeItem(KEY); location.reload(); } });
