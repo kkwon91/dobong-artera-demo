@@ -61,12 +61,12 @@
     return '<span class="cs"><b class="nb">' + esc(displayLabel(u)) + (bs.length ? ' ·' : '') + '</b>' + bs.map(function (b, i) { return ' <span class="nb">' + esc(b) + (i < bs.length - 1 ? ' ·' : '') + '</span>'; }).join('') + '</span>';
   }
   var IDX = {}; UNITS.forEach(function (u, i) { IDX[u.no] = i; });
-  // 호실 묶어 쓰기: 같은 동에서 붙어 있으면(한 칸 건너뛴 것까지) 101~109호, 떨어져 있으면 101, 111~113호
+  // 호실 묶어 쓰기: 같은 동에서 붙어 있으면(연속된 호실만) 101~104·106~109호, 떨어져 있으면 101, 111~113호
   function rangeOf(nos) {
     var runs = [];
     nos.slice().sort(function (x, y) { return IDX[x] - IDX[y]; }).forEach(function (n) {
       var r = runs[runs.length - 1], p = r && r[r.length - 1];
-      if (r && byNo[p].dong === byNo[n].dong && IDX[n] - IDX[p] <= 2) r.push(n); else runs.push([n]);
+      if (r && byNo[p].dong === byNo[n].dong && IDX[n] - IDX[p] === 1) r.push(n); else runs.push([n]);
     });
     return runs.map(function (r) { return r.length > 2 ? r[0] + '~' + r[r.length - 1] : r.join('·'); }).join(', ') + '호';
   }
@@ -312,7 +312,7 @@
     var c = displayColor(u);
     tip.innerHTML = '<b>' + u.no + '호</b><span class="t-st" style="background:' + c.color + ';color:' + c.text + (c.color === '#FFFFFF' ? ';border:1px solid #1F2761' : '') + '">' + displayLabel(u) + '</span>' +
       (brandText(u) ? '<span class="t-br">' + esc(brandText(u)) + '</span>' : '') +
-      '<span class="t-m">전용 ' + u.exP.toFixed(2) + '평 · 계약 ' + u.ctP.toFixed(2) + '평</span>' +
+      '<span class="t-m">전용 ' + u.ex.toFixed(2) + '㎡ · 계약 ' + u.ct.toFixed(2) + '㎡</span>' +
       (u.zone ? '<span class="t-m">' + ZONES[u.zone].label + '</span>' : '');
     tip.hidden = false;
     // 화면 밖으로 안 나가게: 좌우는 화면 안에, 아래가 모자라면(휴대폰 하단 버튼 줄) 호실 위로
@@ -579,7 +579,7 @@
         if (tag) tag.innerHTML = !no ? '' : has ? '기준값 ' + won(b[k]) + ' <button type="button" class="calc-reset" data-reset="' + k + '" hidden>기준값으로</button>' : (k === 'price' ? '상담 시 안내 · 직접 넣어 보세요' : '예시값 · 실제 조건 아님');
       });
       var info = $('[data-calc-info]', f);
-      if (info) info.textContent = !u ? '호실을 고르면 기준값이 채워집니다' : u.no + '호 · ' + u.dong + '동 · 계약 ' + u.ctP.toFixed(2) + '평' + (b.price > 0 ? ' · 계약 3.3㎡당 ' + won(b.price / u.ctP) : ' · 이 호실 분양가는 홍보관 상담(' + ((A.site && A.site.phone) || '1551-4458') + ')에서 안내합니다');
+      if (info) info.textContent = !u ? '호실을 고르면 기준값이 채워집니다' : u.no + '호 · ' + u.dong + '동 · 계약 ' + u.ct.toFixed(2) + '㎡' + (b.price > 0 ? ' · 계약 3.3㎡당 ' + won(b.price / u.ctP) : ' · 이 호실 분양가는 홍보관 상담(' + ((A.site && A.site.phone) || '1551-4458') + ')에서 안내합니다');
     }
     function marks() {
       ['price', 'deposit', 'rent'].forEach(function (k) {

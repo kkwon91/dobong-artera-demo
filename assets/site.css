@@ -1093,3 +1093,6 @@ picture{display:contents}
 .md-mini.spotting .u:not(.spot) polygon{fill-opacity:.12}
 @media(max-width:600px){.md-mini .u text{font-size:26px}.md-mini .fp-anno{display:none}}
 @media(max-width:900px){.md-mini{position:sticky;top:calc(var(--hd) + var(--live) + 6px);z-index:5;box-shadow:0 6px 16px rgba(20,26,69,.25)}}
+
+/* 2026-11-18 광고 검토: 거리 기준을 기관명과 분리해 표시 */
+.distance-note{display:block;font-size:12px;line-height:1.4;margin:6px 0;color:inherit}.demand-map h3{font-size:24px;line-height:1.5}.demand-map p{line-height:1.8}
